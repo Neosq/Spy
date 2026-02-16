@@ -1,0 +1,291 @@
+if _G.SimpleSpyExecuted then
+    if type(_G.SimpleSpyShutdown) == "function" then
+        pcall(_G.SimpleSpyShutdown)
+    end
+    
+    if SimpleSpy2 and SimpleSpy2.Parent then
+        SimpleSpy2:Destroy()
+    end
+    if mobileToggle and mobileToggle.Parent then
+        mobileToggle:Destroy()
+    end
+end
+
+_G.SimpleSpyExecuted = true
+
+_G.SimpleSpyShutdown = function()
+    if SimpleSpy2 then SimpleSpy2:Destroy() end
+    if mobileToggle then mobileToggle:Destroy() end
+    _G.SimpleSpyExecuted = false
+end
+
+local Players = game:GetService("Players")
+local CoreGui = game:GetService("CoreGui")
+local Highlight = loadstring(game:HttpGet("https://github.com/exxtremestuffs/SimpleSpySource/raw/master/highlight.lua"))()
+
+local SimpleSpy2 = Instance.new("ScreenGui")
+local Background = Instance.new("Frame")
+local LeftPanel = Instance.new("Frame")
+local LogList = Instance.new("ScrollingFrame")
+local UIListLayout = Instance.new("UIListLayout")
+local RemoteTemplate = Instance.new("Frame")
+local ColorBar = Instance.new("Frame")
+local Text = Instance.new("TextLabel")
+local Button = Instance.new("TextButton")
+local RightPanel = Instance.new("Frame")
+local CodeBox = Instance.new("Frame")
+local ScrollingFrame = Instance.new("ScrollingFrame")
+local UIGridLayout = Instance.new("UIGridLayout")
+local FunctionTemplate = Instance.new("Frame")
+local ColorBar_2 = Instance.new("Frame")
+local Text_2 = Instance.new("TextLabel")
+local Button_2 = Instance.new("TextButton")
+local TopBar = Instance.new("Frame")
+local Simple = Instance.new("TextButton")
+local CloseButton = Instance.new("TextButton")
+local ImageLabel = Instance.new("ImageLabel")
+local MaximizeButton = Instance.new("TextButton")
+local ImageLabel_2 = Instance.new("ImageLabel")
+local MinimizeButton = Instance.new("TextButton")
+local ImageLabel_3 = Instance.new("ImageLabel")
+local ToolTip = Instance.new("Frame")
+local TextLabel = Instance.new("TextLabel")
+
+SimpleSpy2.Name = "SimpleSpy2"
+SimpleSpy2.ResetOnSpawn = false
+
+Background.Name = "Background"
+Background.Parent = SimpleSpy2
+Background.BackgroundColor3 = Color3.new(1, 1, 1)
+Background.BackgroundTransparency = 1
+Background.Position = UDim2.new(0, 500, 0, 200)
+Background.Size = UDim2.new(0, 450, 0, 268)
+
+LeftPanel.Name = "LeftPanel"
+LeftPanel.Parent = Background
+LeftPanel.BackgroundColor3 = Color3.fromRGB(53, 52, 55)
+LeftPanel.BorderSizePixel = 0
+LeftPanel.Position = UDim2.new(0, 0, 0, 19)
+LeftPanel.Size = UDim2.new(0, 131, 0, 249)
+
+LogList.Name = "LogList"
+LogList.Parent = LeftPanel
+LogList.Active = true
+LogList.BackgroundColor3 = Color3.new(1, 1, 1)
+LogList.BackgroundTransparency = 1
+LogList.BorderSizePixel = 0
+LogList.Position = UDim2.new(0, 0, 0, 9)
+LogList.Size = UDim2.new(0, 131, 0, 232)
+LogList.CanvasSize = UDim2.new(0, 0, 0, 0)
+LogList.ScrollBarThickness = 4
+
+UIListLayout.Parent = LogList
+UIListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+
+RemoteTemplate.Name = "RemoteTemplate"
+RemoteTemplate.Parent = LogList
+RemoteTemplate.BackgroundColor3 = Color3.new(1, 1, 1)
+RemoteTemplate.BackgroundTransparency = 1
+RemoteTemplate.Size = UDim2.new(0, 117, 0, 27)
+
+ColorBar.Name = "ColorBar"
+ColorBar.Parent = RemoteTemplate
+ColorBar.BackgroundColor3 = Color3.fromRGB(255, 242, 0)
+ColorBar.BorderSizePixel = 0
+ColorBar.Position = UDim2.new(0, 0, 0, 1)
+ColorBar.Size = UDim2.new(0, 7, 0, 18)
+ColorBar.ZIndex = 2
+
+Text.Name = "Text"
+Text.Parent = RemoteTemplate
+Text.BackgroundColor3 = Color3.new(1, 1, 1)
+Text.BackgroundTransparency = 1
+Text.Position = UDim2.new(0, 12, 0, 1)
+Text.Size = UDim2.new(0, 105, 0, 18)
+Text.ZIndex = 2
+Text.Font = Enum.Font.SourceSans
+Text.Text = "TEXT"
+Text.TextColor3 = Color3.new(1, 1, 1)
+Text.TextSize = 14
+Text.TextXAlignment = Enum.TextXAlignment.Left
+Text.TextWrapped = true
+
+Button.Name = "Button"
+Button.Parent = RemoteTemplate
+Button.BackgroundColor3 = Color3.new(0, 0, 0)
+Button.BackgroundTransparency = 0.75
+Button.BorderColor3 = Color3.new(1, 1, 1)
+Button.Position = UDim2.new(0, 0, 0, 1)
+Button.Size = UDim2.new(0, 117, 0, 18)
+Button.AutoButtonColor = false
+Button.Font = Enum.Font.SourceSans
+Button.Text = ""
+Button.TextColor3 = Color3.new(0, 0, 0)
+Button.TextSize = 14
+
+RightPanel.Name = "RightPanel"
+RightPanel.Parent = Background
+RightPanel.BackgroundColor3 = Color3.fromRGB(37, 36, 38)
+RightPanel.BorderSizePixel = 0
+RightPanel.Position = UDim2.new(0, 131, 0, 19)
+RightPanel.Size = UDim2.new(0, 319, 0, 249)
+
+CodeBox.Name = "CodeBox"
+CodeBox.Parent = RightPanel
+CodeBox.BackgroundColor3 = Color3.new(0.0823529, 0.0745098, 0.0784314)
+CodeBox.BorderSizePixel = 0
+CodeBox.Size = UDim2.new(0, 319, 0, 119)
+
+ScrollingFrame.Parent = RightPanel
+ScrollingFrame.Active = true
+ScrollingFrame.BackgroundColor3 = Color3.new(1, 1, 1)
+ScrollingFrame.BackgroundTransparency = 1
+ScrollingFrame.Position = UDim2.new(0, 0, 0.5, 0)
+ScrollingFrame.Size = UDim2.new(1, 0, 0.5, -9)
+ScrollingFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+ScrollingFrame.ScrollBarThickness = 4
+
+UIGridLayout.Parent = ScrollingFrame
+UIGridLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+UIGridLayout.SortOrder = Enum.SortOrder.LayoutOrder
+UIGridLayout.CellPadding = UDim2.new(0, 0, 0, 0)
+UIGridLayout.CellSize = UDim2.new(0, 94, 0, 27)
+
+FunctionTemplate.Name = "FunctionTemplate"
+FunctionTemplate.Parent = ScrollingFrame
+FunctionTemplate.BackgroundColor3 = Color3.new(1, 1, 1)
+FunctionTemplate.BackgroundTransparency = 1
+FunctionTemplate.Size = UDim2.new(0, 117, 0, 23)
+
+ColorBar_2.Name = "ColorBar"
+ColorBar_2.Parent = FunctionTemplate
+ColorBar_2.BackgroundColor3 = Color3.new(1, 1, 1)
+ColorBar_2.BorderSizePixel = 0
+ColorBar_2.Position = UDim2.new(0, 7, 0, 10)
+ColorBar_2.Size = UDim2.new(0, 7, 0, 18)
+ColorBar_2.ZIndex = 3
+
+Text_2.Name = "Text"
+Text_2.Parent = FunctionTemplate
+Text_2.BackgroundColor3 = Color3.new(1, 1, 1)
+Text_2.BackgroundTransparency = 1
+Text_2.Position = UDim2.new(0, 19, 0, 10)
+Text_2.Size = UDim2.new(0, 69, 0, 18)
+Text_2.ZIndex = 2
+Text_2.Font = Enum.Font.SourceSans
+Text_2.Text = "TEXT"
+Text_2.TextColor3 = Color3.new(1, 1, 1)
+Text_2.TextSize = 14
+Text_2.TextStrokeColor3 = Color3.new(0.145098, 0.141176, 0.14902)
+Text_2.TextXAlignment = Enum.TextXAlignment.Left
+Text_2.TextWrapped = true
+
+Button_2.Name = "Button"
+Button_2.Parent = FunctionTemplate
+Button_2.BackgroundColor3 = Color3.new(0, 0, 0)
+Button_2.BackgroundTransparency = 0.69999998807907
+Button_2.BorderColor3 = Color3.new(1, 1, 1)
+Button_2.Position = UDim2.new(0, 7, 0, 10)
+Button_2.Size = UDim2.new(0, 80, 0, 18)
+Button_2.AutoButtonColor = false
+Button_2.Font = Enum.Font.SourceSans
+Button_2.Text = ""
+Button_2.TextColor3 = Color3.new(0, 0, 0)
+Button_2.TextSize = 14
+
+TopBar.Name = "TopBar"
+TopBar.Parent = Background
+TopBar.BackgroundColor3 = Color3.fromRGB(37, 35, 38)
+TopBar.BorderSizePixel = 0
+TopBar.Size = UDim2.new(0, 450, 0, 19)
+
+Simple.Name = "Simple"
+Simple.Parent = TopBar
+Simple.BackgroundColor3 = Color3.new(1, 1, 1)
+Simple.AutoButtonColor = false
+Simple.BackgroundTransparency = 1
+Simple.Position = UDim2.new(0, 5, 0, 0)
+Simple.Size = UDim2.new(0, 57, 0, 18)
+Simple.Font = Enum.Font.SourceSansBold
+Simple.Text = "SimpleSpy"
+Simple.TextColor3 = Color3.new(1, 1, 1)
+Simple.TextSize = 14
+Simple.TextXAlignment = Enum.TextXAlignment.Left
+
+CloseButton.Name = "CloseButton"
+CloseButton.Parent = TopBar
+CloseButton.BackgroundColor3 = Color3.new(0.145098, 0.141176, 0.14902)
+CloseButton.BorderSizePixel = 0
+CloseButton.Position = UDim2.new(1, -19, 0, 0)
+CloseButton.Size = UDim2.new(0, 19, 0, 19)
+CloseButton.Font = Enum.Font.SourceSans
+CloseButton.Text = ""
+CloseButton.TextColor3 = Color3.new(0, 0, 0)
+CloseButton.TextSize = 14
+
+ImageLabel.Parent = CloseButton
+ImageLabel.BackgroundColor3 = Color3.new(1, 1, 1)
+ImageLabel.BackgroundTransparency = 1
+ImageLabel.Position = UDim2.new(0, 5, 0, 5)
+ImageLabel.Size = UDim2.new(0, 9, 0, 9)
+ImageLabel.Image = "http://www.roblox.com/asset/?id=5597086202"
+
+MaximizeButton.Name = "MaximizeButton"
+MaximizeButton.Parent = TopBar
+MaximizeButton.BackgroundColor3 = Color3.new(0.145098, 0.141176, 0.14902)
+MaximizeButton.BorderSizePixel = 0
+MaximizeButton.Position = UDim2.new(1, -38, 0, 0)
+MaximizeButton.Size = UDim2.new(0, 19, 0, 19)
+MaximizeButton.Font = Enum.Font.SourceSans
+MaximizeButton.Text = ""
+MaximizeButton.TextColor3 = Color3.new(0, 0, 0)
+MaximizeButton.TextSize = 14
+
+ImageLabel_2.Parent = MaximizeButton
+ImageLabel_2.BackgroundColor3 = Color3.new(1, 1, 1)
+ImageLabel_2.BackgroundTransparency = 1
+ImageLabel_2.Position = UDim2.new(0, 5, 0, 5)
+ImageLabel_2.Size = UDim2.new(0, 9, 0, 9)
+ImageLabel_2.Image = "http://www.roblox.com/asset/?id=5597108117"
+
+MinimizeButton.Name = "MinimizeButton"
+MinimizeButton.Parent = TopBar
+MinimizeButton.BackgroundColor3 = Color3.new(0.145098, 0.141176, 0.14902)
+MinimizeButton.BorderSizePixel = 0
+MinimizeButton.Position = UDim2.new(1, -57, 0, 0)
+MinimizeButton.Size = UDim2.new(0, 19, 0, 19)
+MinimizeButton.Font = Enum.Font.SourceSans
+MinimizeButton.Text = ""
+MinimizeButton.TextColor3 = Color3.new(0, 0, 0)
+MinimizeButton.TextSize = 14
+
+ImageLabel_3.Parent = MinimizeButton
+ImageLabel_3.BackgroundColor3 = Color3.new(1, 1, 1)
+ImageLabel_3.BackgroundTransparency = 1
+ImageLabel_3.Position = UDim2.new(0, 5, 0, 5)
+ImageLabel_3.Size = UDim2.new(0, 9, 0, 9)
+ImageLabel_3.Image = "http://www.roblox.com/asset/?id=5597105827"
+
+ToolTip.Name = "ToolTip"
+ToolTip.Parent = SimpleSpy2
+ToolTip.BackgroundColor3 = Color3.fromRGB(26, 26, 26)
+ToolTip.BackgroundTransparency = 0.1
+ToolTip.BorderColor3 = Color3.new(1, 1, 1)
+ToolTip.Size = UDim2.new(0, 200, 0, 50)
+ToolTip.ZIndex = 3
+ToolTip.Visible = false
+
+TextLabel.Parent = ToolTip
+TextLabel.BackgroundColor3 = Color3.new(1, 1, 1)
+TextLabel.BackgroundTransparency = 1
+TextLabel.Position = UDim2.new(0, 2, 0, 2)
+TextLabel.Size = UDim2.new(0, 196, 0, 46)
+TextLabel.ZIndex = 3
+TextLabel.Font = Enum.Font.SourceSans
+TextLabel.Text = "This is some slightly longer text."
+TextLabel.TextColor3 = Color3.new(1, 1, 1)
+TextLabel.TextSize = 14
+TextLabel.TextWrapped = true
+TextLabel.TextXAlignment = Enum.TextXAlignment.Left
+TextLabel.TextYAlignment = Enum.TextYAlignment.Top

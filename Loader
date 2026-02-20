@@ -1,0 +1,20 @@
+local base = "https://raw.githubusercontent.com/Neosq/Spy/main/"
+
+local files = {
+    "CoreLogic",
+    "GUI",
+    "End"
+}
+
+local function load(name)
+    local url = base .. name
+    local success, code = pcall(game.HttpGet, game, url, true)
+    if not success then return end
+    local fn = loadstring(code, name)
+    if not fn then return end
+    pcall(fn)
+end
+
+for _, name in ipairs(files) do
+    load(name)
+end

@@ -1,4 +1,4 @@
--- CoreLogic - FULL FIXED (Highlight removed, fallback TextBox, debug prints)
+-- CoreLogic - FINAL FIXED VERSION (Highlight removed, fallback TextBox, full debug)
 
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -560,7 +560,7 @@ if not _G.SimpleSpyExecuted then
                 tb.Parent = CodeBox
             end
         }
-        codebox:setRaw("-- SimpleSpy ready (code display active)")
+        codebox:setRaw("-- SimpleSpy ready (fallback code display active)")
         print("[SimpleSpy] 5. Fallback code display ready")
 
         print("[SimpleSpy] 6. Setting global SimpleSpy...")

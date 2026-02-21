@@ -1,4 +1,4 @@
--- CoreLogic - FIXED VERSION (Highlight removed, fallback TextBox, debug prints)
+-- CoreLogic - FULL FIXED (Highlight removed, fallback TextBox, debug prints)
 
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -508,7 +508,7 @@ function genScript(remote, args)
     return gen
 end
 
--- main - debug + safe execution (no Highlight dependency)
+-- main - debug + safe execution (no Highlight)
 print("[SimpleSpy] Starting main setup...")
 
 if not _G.SimpleSpyExecuted then
@@ -542,7 +542,7 @@ if not _G.SimpleSpyExecuted then
         RemoteTemplate.Parent = nil
         FunctionTemplate.Parent = nil
 
-        print("[SimpleSpy] 5. Creating fallback code display (no Highlight)...")
+        print("[SimpleSpy] 5. Creating fallback code display...")
         codebox = {
             setRaw = function(self, text)
                 local tb = Instance.new("TextBox")
@@ -560,8 +560,8 @@ if not _G.SimpleSpyExecuted then
                 tb.Parent = CodeBox
             end
         }
-        codebox:setRaw("-- Code display ready (Highlight skipped)")
-        print("[SimpleSpy] 5. Fallback codebox ready")
+        codebox:setRaw("-- SimpleSpy ready (code display active)")
+        print("[SimpleSpy] 5. Fallback code display ready")
 
         print("[SimpleSpy] 6. Setting global SimpleSpy...")
         getgenv().SimpleSpy = SimpleSpy

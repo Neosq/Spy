@@ -1,5 +1,27 @@
 local gui_logic = {}
 
+-- Получаем зависимости из getgenv().SS
+local SS           = getgenv().SS
+local gui_elements = SS.gui_elements
+
+local Background     = gui_elements.Background
+local TopBar         = gui_elements.TopBar
+local LeftPanel      = gui_elements.LeftPanel
+local RightPanel     = gui_elements.RightPanel
+local CodeBox        = gui_elements.CodeBox
+local ScrollingFrame = gui_elements.ScrollingFrame
+local LogList        = gui_elements.LogList
+local SimpleSpy3     = gui_elements.SimpleSpy3
+local CloseButton    = gui_elements.CloseButton
+local ToolTip        = gui_elements.ToolTip
+local TextLabel      = gui_elements.TextLabel
+
+local TweenService     = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+local RunService       = game:GetService("RunService")
+local TextService      = game:GetService("TextService")
+local GuiInset         = game:GetService("GuiService"):GetGuiInset()
+
 local closed = false
 local mainClosing = false
 local sideClosed = true
@@ -62,13 +84,33 @@ local function fadeOut(elements)
     end
 end
 
+local function maximizeSize(speed)
+    if not speed then speed = 0.05 end
+    TweenService:Create(LeftPanel, TweenInfo.new(speed), {Size = UDim2.fromOffset(LeftPanel.AbsoluteSize.X, Background.AbsoluteSize.Y - TopBar.AbsoluteSize.Y)}):Play()
+    TweenService:Create(RightPanel, TweenInfo.new(speed), {Size = UDim2.fromOffset(Background.AbsoluteSize.X - LeftPanel.AbsoluteSize.X, Background.AbsoluteSize.Y - TopBar.AbsoluteSize.Y)}):Play()
+    TweenService:Create(TopBar, TweenInfo.new(speed), {Size = UDim2.fromOffset(Background.AbsoluteSize.X, TopBar.AbsoluteSize.Y)}):Play()
+    TweenService:Create(ScrollingFrame, TweenInfo.new(speed), {Size = UDim2.fromOffset(Background.AbsoluteSize.X - LeftPanel.AbsoluteSize.X, 110), Position = UDim2.fromOffset(0, Background.AbsoluteSize.Y - 119 - TopBar.AbsoluteSize.Y)}):Play()
+    TweenService:Create(CodeBox, TweenInfo.new(speed), {Size = UDim2.fromOffset(Background.AbsoluteSize.X - LeftPanel.AbsoluteSize.X, Background.AbsoluteSize.Y - 119 - TopBar.AbsoluteSize.Y)}):Play()
+    TweenService:Create(LogList, TweenInfo.new(speed), {Size = UDim2.fromOffset(LogList.AbsoluteSize.X, Background.AbsoluteSize.Y - TopBar.AbsoluteSize.Y - 18)}):Play()
+end
+
+local function minimizeSize(speed)
+    if not speed then speed = 0.05 end
+    TweenService:Create(LeftPanel, TweenInfo.new(speed), {Size = UDim2.fromOffset(LeftPanel.AbsoluteSize.X, Background.AbsoluteSize.Y - TopBar.AbsoluteSize.Y)}):Play()
+    TweenService:Create(RightPanel, TweenInfo.new(speed), {Size = UDim2.fromOffset(0, Background.AbsoluteSize.Y - TopBar.AbsoluteSize.Y)}):Play()
+    TweenService:Create(TopBar, TweenInfo.new(speed), {Size = UDim2.fromOffset(LeftPanel.AbsoluteSize.X, TopBar.AbsoluteSize.Y)}):Play()
+    TweenService:Create(ScrollingFrame, TweenInfo.new(speed), {Size = UDim2.fromOffset(0, 119), Position = UDim2.fromOffset(0, Background.AbsoluteSize.Y - 119 - TopBar.AbsoluteSize.Y)}):Play()
+    TweenService:Create(CodeBox, TweenInfo.new(speed), {Size = UDim2.fromOffset(0, Background.AbsoluteSize.Y - 119 - TopBar.AbsoluteSize.Y)}):Play()
+    TweenService:Create(LogList, TweenInfo.new(speed), {Size = UDim2.fromOffset(LogList.AbsoluteSize.X, Background.AbsoluteSize.Y - TopBar.AbsoluteSize.Y - 18)}):Play()
+end
+
 local function toggleMinimize(override)
     if mainClosing and not override or maximized then return end
     mainClosing = true
     closed = not closed
     if closed then
         if not sideClosed then
-            toggleSideTray(true)
+            gui_logic.toggleSideTray(true)
         end
         LeftPanel.Visible = true
         remotesFadeIn = fadeOut(LeftPanel:GetDescendants())
@@ -81,7 +123,7 @@ local function toggleMinimize(override)
             remotesFadeIn()
             remotesFadeIn = nil
         end
-        bringBackOnResize()
+        gui_logic.bringBackOnResize()
     end
     mainClosing = false
 end
@@ -106,7 +148,7 @@ local function toggleSideTray(override)
         if rightFadeIn then
             rightFadeIn()
         end
-        bringBackOnResize()
+        gui_logic.bringBackOnResize()
     end
     sideClosing = false
 end
@@ -210,26 +252,6 @@ local function mouseMoved()
     else
         mouseInGui = false
     end
-end
-
-local function maximizeSize(speed)
-    if not speed then speed = 0.05 end
-    TweenService:Create(LeftPanel, TweenInfo.new(speed), {Size = UDim2.fromOffset(LeftPanel.AbsoluteSize.X, Background.AbsoluteSize.Y - TopBar.AbsoluteSize.Y)}):Play()
-    TweenService:Create(RightPanel, TweenInfo.new(speed), {Size = UDim2.fromOffset(Background.AbsoluteSize.X - LeftPanel.AbsoluteSize.X, Background.AbsoluteSize.Y - TopBar.AbsoluteSize.Y)}):Play()
-    TweenService:Create(TopBar, TweenInfo.new(speed), {Size = UDim2.fromOffset(Background.AbsoluteSize.X, TopBar.AbsoluteSize.Y)}):Play()
-    TweenService:Create(ScrollingFrame, TweenInfo.new(speed), {Size = UDim2.fromOffset(Background.AbsoluteSize.X - LeftPanel.AbsoluteSize.X, 110), Position = UDim2.fromOffset(0, Background.AbsoluteSize.Y - 119 - TopBar.AbsoluteSize.Y)}):Play()
-    TweenService:Create(CodeBox, TweenInfo.new(speed), {Size = UDim2.fromOffset(Background.AbsoluteSize.X - LeftPanel.AbsoluteSize.X, Background.AbsoluteSize.Y - 119 - TopBar.AbsoluteSize.Y)}):Play()
-    TweenService:Create(LogList, TweenInfo.new(speed), {Size = UDim2.fromOffset(LogList.AbsoluteSize.X, Background.AbsoluteSize.Y - TopBar.AbsoluteSize.Y - 18)}):Play()
-end
-
-local function minimizeSize(speed)
-    if not speed then speed = 0.05 end
-    TweenService:Create(LeftPanel, TweenInfo.new(speed), {Size = UDim2.fromOffset(LeftPanel.AbsoluteSize.X, Background.AbsoluteSize.Y - TopBar.AbsoluteSize.Y)}):Play()
-    TweenService:Create(RightPanel, TweenInfo.new(speed), {Size = UDim2.fromOffset(0, Background.AbsoluteSize.Y - TopBar.AbsoluteSize.Y)}):Play()
-    TweenService:Create(TopBar, TweenInfo.new(speed), {Size = UDim2.fromOffset(LeftPanel.AbsoluteSize.X, TopBar.AbsoluteSize.Y)}):Play()
-    TweenService:Create(ScrollingFrame, TweenInfo.new(speed), {Size = UDim2.fromOffset(0, 119), Position = UDim2.fromOffset(0, Background.AbsoluteSize.Y - 119 - TopBar.AbsoluteSize.Y)}):Play()
-    TweenService:Create(CodeBox, TweenInfo.new(speed), {Size = UDim2.fromOffset(0, Background.AbsoluteSize.Y - 119 - TopBar.AbsoluteSize.Y)}):Play()
-    TweenService:Create(LogList, TweenInfo.new(speed), {Size = UDim2.fromOffset(LogList.AbsoluteSize.X, Background.AbsoluteSize.Y - TopBar.AbsoluteSize.Y - 18)}):Play()
 end
 
 local function validateSize()
@@ -400,19 +422,20 @@ local function makeToolTip(enable, text)
     end
 end
 
-gui_logic.toggleMinimize = toggleMinimize
-gui_logic.toggleSideTray = toggleSideTray
-gui_logic.toggleMaximize = toggleMaximize
+gui_logic.toggleMinimize    = toggleMinimize
+gui_logic.toggleSideTray    = toggleSideTray
+gui_logic.toggleMaximize    = toggleMaximize
 gui_logic.bringBackOnResize = bringBackOnResize
-gui_logic.connectResize = connectResize
+gui_logic.connectResize     = connectResize
 gui_logic.backgroundUserInput = backgroundUserInput
-gui_logic.mouseEntered = mouseEntered
-gui_logic.mouseMoved = mouseMoved
-gui_logic.makeToolTip = makeToolTip
-gui_logic.scaleToolTip = scaleToolTip
-gui_logic.closed = closed
-gui_logic.sideClosed = sideClosed
-gui_logic.maximized = maximized
-gui_logic.connections = connections
+gui_logic.mouseEntered      = mouseEntered
+gui_logic.mouseMoved        = mouseMoved
+gui_logic.makeToolTip       = makeToolTip
+gui_logic.scaleToolTip      = scaleToolTip
+gui_logic.mouseInGui        = mouseInGui
+gui_logic.closed            = closed
+gui_logic.sideClosed        = sideClosed
+gui_logic.maximized         = maximized
+gui_logic.connections       = connections
 
 return gui_logic

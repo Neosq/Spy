@@ -1,9 +1,50 @@
 local log_manager = {}
 
+-- Зависимости
+local SS           = getgenv().SS
+local gui_elements = SS.gui_elements
+local gui_logic    = SS.gui_logic
+local serializer   = SS.serializer
+
+local LogList        = gui_elements.LogList
+local ScrollingFrame = gui_elements.ScrollingFrame
+
+-- UIListLayout и UIGridLayout берём из детей фреймов
+local UIListLayout = LogList:FindFirstChildOfClass("UIListLayout")
+local UIGridLayout = ScrollingFrame:FindFirstChildOfClass("UIGridLayout")
+
+local TweenService = game:GetService("TweenService")
+
 local layoutOrderNum = 999999999
-local logs = {}
+local logs       = {}
 local remoteLogs = {}
-local selected = nil
+local selected   = nil
+local blacklist  = {}
+local blocklist  = {}
+local history    = {}
+local excluding  = {}
+local DecompiledScripts = {}
+local codebox    = nil  -- будет установлен из init.lua через log_manager.codebox = ...
+
+local OldDebugId = typeof(game.HttpService) ~= "nil" and function(i)
+    return game:GetService("HttpService"):GenerateGUID(false)
+end or function() return "" end
+
+-- Переопределяем нормальный debugid если доступен
+if game and game.GetService then
+    local ok, svc = pcall(function() return game:GetService("HttpService") end)
+end
+-- используем стандартный если есть
+OldDebugId = (typeof(tostring) == "function") and function(instance)
+    if typeof(instance) == "Instance" then
+        return tostring(instance):match("%((.-)%)") or tostring(instance)
+    end
+    return tostring(instance)
+end or OldDebugId
+
+local function logthread(thread)
+    -- заглушка, реализация в remote_spy_core
+end
 
 local function clean()
     local max = getgenv().SIMPLESPYCONFIG_MaxRemotes or 500
@@ -26,11 +67,15 @@ local function clean()
 end
 
 local function updateRemoteCanvas()
-    LogList.CanvasSize = UDim2.fromOffset(UIListLayout.AbsoluteContentSize.X, UIListLayout.AbsoluteContentSize.Y)
+    if UIListLayout then
+        LogList.CanvasSize = UDim2.fromOffset(UIListLayout.AbsoluteContentSize.X, UIListLayout.AbsoluteContentSize.Y)
+    end
 end
 
 local function updateFunctionCanvas()
-    ScrollingFrame.CanvasSize = UDim2.fromOffset(UIGridLayout.AbsoluteContentSize.X, UIGridLayout.AbsoluteContentSize.Y)
+    if UIGridLayout then
+        ScrollingFrame.CanvasSize = UDim2.fromOffset(UIGridLayout.AbsoluteContentSize.X, UIGridLayout.AbsoluteContentSize.Y)
+    end
 end
 
 local function eventSelect(frame)
@@ -51,10 +96,12 @@ local function eventSelect(frame)
         spawn(function()
             TweenService:Create(frame.Button, TweenInfo.new(0.5), {BackgroundColor3 = Color3.fromRGB(92, 126, 229)}):Play()
         end)
-        codebox:setRaw(selected.GenScript)
+        if codebox then
+            codebox:setRaw(selected.GenScript)
+        end
     end
-    if sideClosed then
-        toggleSideTray()
+    if gui_logic.sideClosed then
+        gui_logic.toggleSideTray()
     end
 end
 
@@ -129,7 +176,7 @@ local function newRemote(type, data)
     local connect = Button.MouseButton1Click:Connect(function()
         logthread(coroutine.running())
         eventSelect(RemoteTemplate)
-        log.GenScript = genScript(log.Remote, log.args)
+        log.GenScript = serializer.genScript(log.Remote, log.args)
         if data.blocked then
             log.GenScript = "-- THIS REMOTE WAS PREVENTED FROM FIRING TO THE SERVER BY SIMPLESPY\n\n" .. log.GenScript
         end
@@ -144,13 +191,23 @@ local function newRemote(type, data)
     updateRemoteCanvas()
 end
 
-log_manager.newRemote = newRemote
-log_manager.clean = clean
-log_manager.updateRemoteCanvas = updateRemoteCanvas
+-- Экспорт
+log_manager.newRemote           = newRemote
+log_manager.clean               = clean
+log_manager.updateRemoteCanvas  = updateRemoteCanvas
 log_manager.updateFunctionCanvas = updateFunctionCanvas
-log_manager.eventSelect = eventSelect
-log_manager.logs = logs
-log_manager.remoteLogs = remoteLogs
-log_manager.selected = selected
+log_manager.eventSelect         = eventSelect
+log_manager.logthread           = logthread
+log_manager.logs                = logs
+log_manager.remoteLogs          = remoteLogs
+log_manager.selected            = selected
+log_manager.blacklist           = blacklist
+log_manager.blocklist           = blocklist
+log_manager.history             = history
+log_manager.excluding           = excluding
+log_manager.DecompiledScripts   = DecompiledScripts
+log_manager.OldDebugId          = OldDebugId
+-- codebox устанавливается снаружи после инициализации Highlight:
+-- log_manager.codebox = codebox
 
 return log_manager

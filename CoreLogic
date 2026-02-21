@@ -1,642 +1,104 @@
-local RunService = game:GetService("RunService")
+-- Mobile Toggle - full reliable version (End file)
+
+print("[Mobile Toggle] Starting creation...")
+
+local CoreGui = game:GetService("CoreGui")
 local UserInputService = game:GetService("UserInputService")
-local TweenService = game:GetService("TweenService")
-local ContentProvider = game:GetService("ContentProvider")
-local TextService = game:GetService("TextService")
 
-local selectedColor = Color3.new(0.321569, 0.333333, 1)
-local deselectedColor = Color3.new(0.8, 0.8, 0.8)
+-- Create ScreenGui
+local mobileToggle = Instance.new("ScreenGui")
+mobileToggle.Name = "MobileToggle"
+mobileToggle.ResetOnSpawn = false
+mobileToggle.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+mobileToggle.Parent = CoreGui
+print("[Mobile Toggle] ScreenGui created and parented to CoreGui")
 
-local layoutOrderNum = 999999999
-local mainClosing = false
-local closed = false
-local sideClosing = false
-local sideClosed = false
-local maximized = false
-local logs = {}
-local selected = nil
-local blacklist = {}
-local blocklist = {}
-local getNil = false
-local connectedRemotes = {}
-local toggle = false
-local gm
-local original
-local prevTables = {}
-local remoteLogs = {}
-local remoteEvent = Instance.new("RemoteEvent")
-local remoteFunction = Instance.new("RemoteFunction")
-local originalEvent = remoteEvent.FireServer
-local originalFunction = remoteFunction.InvokeServer
+-- Create button
+local circleBtn = Instance.new("ImageButton")
+circleBtn.Name = "ToggleBtn"
+circleBtn.Size = UDim2.new(0, 60, 0, 60)
+circleBtn.Position = UDim2.new(0.5, -30, 0.35, -30)  -- center + slightly upper
+circleBtn.AnchorPoint = Vector2.new(0.5, 0.5)
+circleBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 47)
+circleBtn.BackgroundTransparency = 0.3
+circleBtn.ImageTransparency = 0
+circleBtn.ImageColor3 = Color3.new(1, 1, 1)
+circleBtn.ZIndex = 10000
+circleBtn.Visible = true
 
-_G.SIMPLESPYCONFIG_MaxRemotes = 500
-local indent = 4
-local scheduled = {}
-local schedulerconnect
-local SimpleSpy = {}
-local topstr = ""
-local bottomstr = ""
-local remotesFadeIn
-local rightFadeIn
-local codebox
-local p
-local getnilrequired = false
+-- Public working eye icon
+circleBtn.Image = "rbxassetid://7072718362"
+print("[Mobile Toggle] Image set to: rbxassetid://7072718362 (eye icon)")
 
-local autoblock = false
-local history = {}
-local excluding = {}
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(1)
+corner.Parent = circleBtn
 
-local funcEnabled = true
+circleBtn.Parent = mobileToggle
+print("[Mobile Toggle] Button added to ScreenGui")
 
-local remoteSignals = {}
-local remoteHooks = {}
+-- Debug after 1 second
+task.spawn(function()
+    task.wait(1)
+    print("[Debug] Button Position (UDim2): " .. tostring(circleBtn.Position))
+    print("[Debug] Absolute Position: " .. tostring(circleBtn.AbsolutePosition))
+    print("[Debug] Absolute Size: " .. tostring(circleBtn.AbsoluteSize))
+    print("[Debug] Visible: " .. tostring(circleBtn.Visible))
+    print("[Debug] ImageTransparency: " .. tostring(circleBtn.ImageTransparency))
+    print("[Debug] ImageColor3: " .. tostring(circleBtn.ImageColor3))
+end)
 
-local oldIcon
-
-local mouseInGui = false
-
-local connections = {}
-
-local useGetCallingScript = false
-
-local keyToString = false
-
-local recordReturnValues = false
-
-function SimpleSpy:ArgsToString(method, args)
-    return v2v({ args = args }) .. "\n\n" .. method .. "(unpack(args))"
-end
-
-function SimpleSpy:TableToVars(t)
-    return v2v(t)
-end
-
-function SimpleSpy:ValueToVar(value, variablename)
-    if not variablename then variablename = 1 end
-    return v2v({ [variablename] = value })
-end
-
-function SimpleSpy:ValueToString(value)
-    return v2s(value)
-end
-
-function SimpleSpy:GetFunctionInfo(func)
-    return v2v({ functionInfo = { info = debug.getinfo(func), constants = debug.getconstants(func) } })
-end
-
-function SimpleSpy:GetRemoteFiredSignal(remote)
-    if not remoteSignals[remote] then remoteSignals[remote] = newSignal() end
-    return remoteSignals[remote]
-end
-
-function SimpleSpy:HookRemote(remote, f)
-    remoteHooks[remote] = f
-end
-
-function SimpleSpy:BlockRemote(remote)
-    blocklist[remote] = true
-end
-
-function SimpleSpy:ExcludeRemote(remote)
-    blacklist[remote] = true
-end
-
-function newSignal()
-    local connected = {}
-    return {
-        Connect = function(self, f)
-            connected[tostring(f)] = f
-            return {
-                Connected = true,
-                Disconnect = function(self)
-                    self.Connected = false
-                    connected[tostring(f)] = nil
-                end,
-            }
-        end,
-        Wait = function(self)
-            local thread = coroutine.running()
-            local connection = self:Connect(function()
-                connection:Disconnect()
-                if coroutine.status(thread) == "suspended" then coroutine.resume(thread) end
-            end)
-            coroutine.yield()
-        end,
-        Fire = function(self, ...)
-            for _, f in pairs(connected) do coroutine.wrap(f)(...) end
-        end,
-    }
-end
-
-function clean()
-    local max = _G.SIMPLESPYCONFIG_MaxRemotes or 500
-    if #remoteLogs > max then
-        for i = 100, #remoteLogs do
-            local v = remoteLogs[i]
-            if typeof(v[1]) == "RBXScriptConnection" then v[1]:Disconnect() end
-            if typeof(v[2]) == "Instance" then v[2]:Destroy() end
+-- Click handler - reliable toggle with search
+circleBtn.Activated:Connect(function()
+    print("[Mobile Toggle] Button clicked!")
+    
+    local foundGui = nil
+    for _, gui in ipairs(CoreGui:GetChildren()) do
+        if gui:IsA("ScreenGui") and gui.Name:lower():find("simplespy") then
+            foundGui = gui
+            break
         end
-        local newLogs = {}
-        for i = 1, 100 do table.insert(newLogs, remoteLogs[i]) end
-        remoteLogs = newLogs
     end
-end
-
-function scaleToolTip()
-    local size = TextService:GetTextSize(TextLabel.Text, TextLabel.TextSize, TextLabel.Font, Vector2.new(196, math.huge))
-    TextLabel.Size = UDim2.new(0, size.X, 0, size.Y)
-    ToolTip.Size = UDim2.new(0, size.X + 4, 0, size.Y + 4)
-end
-
-function onToggleButtonHover()
-    if not toggle then
-        TweenService:Create(Simple, TweenInfo.new(0.5), { TextColor3 = Color3.fromRGB(252, 51, 51) }):Play()
+    
+    if foundGui then
+        foundGui.Enabled = not foundGui.Enabled
+        print("[Mobile Toggle] Found GUI '" .. foundGui.Name .. "' - Enabled now: " .. tostring(foundGui.Enabled))
     else
-        TweenService:Create(Simple, TweenInfo.new(0.5), { TextColor3 = Color3.fromRGB(68, 206, 91) }):Play()
+        print("[Mobile Toggle] ERROR: No SimpleSpy GUI found in CoreGui! Check GUI file for ScreenGui name.")
     end
-end
-
-function onToggleButtonUnhover()
-    TweenService:Create(Simple, TweenInfo.new(0.5), { TextColor3 = Color3.fromRGB(255, 255, 255) }):Play()
-end
-
-function onXButtonHover()
-    TweenService:Create(CloseButton, TweenInfo.new(0.2), { BackgroundColor3 = Color3.fromRGB(255, 60, 60) }):Play()
-end
-
-function onXButtonUnhover()
-    TweenService:Create(CloseButton, TweenInfo.new(0.2), { BackgroundColor3 = Color3.fromRGB(37, 36, 38) }):Play()
-end
-
-function onToggleButtonClick()
-    toggleSpy()
-end
-
-function connectResize()
-    local lastCam = workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(bringBackOnResize)
-    workspace:GetPropertyChangedSignal("CurrentCamera"):Connect(function()
-        lastCam:Disconnect()
-        if workspace.CurrentCamera then
-            lastCam = workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(bringBackOnResize)
-        end
-    end)
-end
-
-function bringBackOnResize()
-    validateSize()
-    if sideClosed then minimizeSize() else maximizeSize() end
-    local currentX = Background.AbsolutePosition.X
-    local currentY = Background.AbsolutePosition.Y
-    local viewportSize = workspace.CurrentCamera.ViewportSize
-    if currentX < 0 or currentX > viewportSize.X - (sideClosed and 131 or Background.AbsoluteSize.X) then
-        currentX = math.clamp(currentX, 0, viewportSize.X - (sideClosed and 131 or Background.AbsoluteSize.X))
-    end
-    if currentY < 0 or currentY > viewportSize.Y - (closed and 19 or Background.AbsoluteSize.Y) - 36 then
-        currentY = math.clamp(currentY, 0, viewportSize.Y - (closed and 19 or Background.AbsoluteSize.Y) - 36)
-    end
-    TweenService:Create(Background, TweenInfo.new(0.1), { Position = UDim2.new(0, currentX, 0, currentY) }):Play()
-end
-
-function onBarInput(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-        local lastPos = UserInputService:GetMouseLocation()
-        local offset = Background.AbsolutePosition - lastPos
-        RunService:BindToRenderStep("drag", 1, function()
-            local newPos = UserInputService:GetMouseLocation()
-            if newPos ~= lastPos then
-                local currentPos = newPos + offset
-                Background.Position = UDim2.new(0, currentPos.X, 0, currentPos.Y)
-                lastPos = newPos
-            end
-        end)
-        table.insert(connections, UserInputService.InputEnded:Connect(function(inputE)
-            if input == inputE then RunService:UnbindFromRenderStep("drag") end
-        end))
-    end
-end
-
-function fadeOut(elements)
-    local data = {}
-    for _, v in pairs(elements) do
-        if typeof(v) == "Instance" and v:IsA("GuiObject") and v.Visible then
-            data[v] = { BackgroundTransparency = v.BackgroundTransparency }
-            TweenService:Create(v, TweenInfo.new(0.5), { BackgroundTransparency = 1 }):Play()
-            if v:IsA("TextBox") or v:IsA("TextButton") or v:IsA("TextLabel") then
-                data[v].TextTransparency = v.TextTransparency
-                TweenService:Create(v, TweenInfo.new(0.5), { TextTransparency = 1 }):Play()
-            elseif v:IsA("ImageButton") or v:IsA("ImageLabel") then
-                data[v].ImageTransparency = v.ImageTransparency
-                TweenService:Create(v, TweenInfo.new(0.5), { ImageTransparency = 1 }):Play()
-            end
-            v.Visible = false
-        end
-    end
-    return function()
-        for i, _ in pairs(data) do
-            TweenService:Create(i, TweenInfo.new(0.5), { BackgroundTransparency = data[i].BackgroundTransparency }):Play()
-            if i:IsA("TextBox") or i:IsA("TextButton") or i:IsA("TextLabel") then
-                TweenService:Create(i, TweenInfo.new(0.5), { TextTransparency = data[i].TextTransparency }):Play()
-            elseif i:IsA("ImageButton") or i:IsA("ImageLabel") then
-                TweenService:Create(i, TweenInfo.new(0.5), { ImageTransparency = data[i].ImageTransparency }):Play()
-            end
-            i.Visible = true
-        end
-    end
-end
-
-function toggleMinimize()
-    if mainClosing or maximized then return end
-    mainClosing = true
-    closed = not closed
-    if closed then
-        if not sideClosed then toggleSideTray(true) end
-        LeftPanel.Visible = true
-        TweenService:Create(LeftPanel, TweenInfo.new(0.5), { Size = UDim2.new(0, 131, 0, 0) }):Play()
-        task.wait(0.5)
-        remotesFadeIn = fadeOut(LeftPanel:GetDescendants())
-    else
-        TweenService:Create(LeftPanel, TweenInfo.new(0.5), { Size = UDim2.new(0, 131, 0, 249) }):Play()
-        task.wait(0.5)
-        if remotesFadeIn then remotesFadeIn() remotesFadeIn = nil end
-        bringBackOnResize()
-    end
-    mainClosing = false
-end
-
-function toggleSideTray()
-    if sideClosing or maximized then return end
-    sideClosing = true
-    sideClosed = not sideClosed
-    if sideClosed then
-        rightFadeIn = fadeOut(RightPanel:GetDescendants())
-        task.wait(0.5)
-        minimizeSize()
-        task.wait(0.5)
-        RightPanel.Visible = false
-    else
-        if closed then toggleMinimize(true) end
-        RightPanel.Visible = true
-        maximizeSize()
-        task.wait(0.5)
-        if rightFadeIn then rightFadeIn() end
-        bringBackOnResize()
-    end
-    sideClosing = false
-end
-
-function toggleMaximize()
-    if not sideClosed and not maximized then
-        maximized = true
-        local disable = Instance.new("TextButton")
-        disable.Size = UDim2.new(1, 0, 1, 0)
-        disable.BackgroundColor3 = Color3.new()
-        disable.BackgroundTransparency = 1
-        disable.ZIndex = 3
-        disable.AutoButtonColor = false
-        CodeBox.ZIndex = 4
-        TweenService:Create(CodeBox, TweenInfo.new(0.5), { Size = UDim2.new(0.5, 0, 0.5, 0), Position = UDim2.new(0.25, 0, 0.25, 0) }):Play()
-        TweenService:Create(disable, TweenInfo.new(0.5), { BackgroundTransparency = 0.5 }):Play()
-        disable.MouseButton1Click:Connect(function()
-            TweenService:Create(CodeBox, TweenInfo.new(0.5), { Size = UDim2.new(1, 0, 0.5, 0), Position = UDim2.new(0, 0, 0, 0) }):Play()
-            TweenService:Create(disable, TweenInfo.new(0.5), { BackgroundTransparency = 1 }):Play()
-            maximized = false
-            task.wait(0.5)
-            disable:Destroy()
-            CodeBox.ZIndex = 0
-        end)
-    end
-end
-
-function isInResizeRange(p)
-    local relativeP = p - Background.AbsolutePosition
-    local range = 5
-    if relativeP.X >= TopBar.AbsoluteSize.X - range and relativeP.Y >= Background.AbsoluteSize.Y - range then
-        return true, "B"
-    elseif relativeP.X >= TopBar.AbsoluteSize.X - range then
-        return true, "X"
-    elseif relativeP.Y >= Background.AbsoluteSize.Y - range then
-        return true, "Y"
-    end
-    return false
-end
-
-function isInDragRange(p)
-    local relativeP = p - Background.AbsolutePosition
-    return relativeP.X <= TopBar.AbsoluteSize.X - CloseButton.AbsoluteSize.X * 3 and relativeP.X >= 0 and relativeP.Y <= TopBar.AbsoluteSize.Y
-end
-
-function maximizeSize()
-    TweenService:Create(LeftPanel, TweenInfo.new(0.05), { Size = UDim2.fromOffset(LeftPanel.AbsoluteSize.X, Background.AbsoluteSize.Y - TopBar.AbsoluteSize.Y) }):Play()
-    TweenService:Create(RightPanel, TweenInfo.new(0.05), { Size = UDim2.fromOffset(Background.AbsoluteSize.X - LeftPanel.AbsoluteSize.X, Background.AbsoluteSize.Y - TopBar.AbsoluteSize.Y) }):Play()
-    TweenService:Create(TopBar, TweenInfo.new(0.05), { Size = UDim2.fromOffset(Background.AbsoluteSize.X, TopBar.AbsoluteSize.Y) }):Play()
-    TweenService:Create(ScrollingFrame, TweenInfo.new(0.05), { Size = UDim2.fromOffset(Background.AbsoluteSize.X - LeftPanel.AbsoluteSize.X, 110), Position = UDim2.fromOffset(0, Background.AbsoluteSize.Y - 119 - TopBar.AbsoluteSize.Y) }):Play()
-    TweenService:Create(CodeBox, TweenInfo.new(0.05), { Size = UDim2.fromOffset(Background.AbsoluteSize.X - LeftPanel.AbsoluteSize.X, Background.AbsoluteSize.Y - 119 - TopBar.AbsoluteSize.Y) }):Play()
-    TweenService:Create(LogList, TweenInfo.new(0.05), { Size = UDim2.fromOffset(LogList.AbsoluteSize.X, Background.AbsoluteSize.Y - TopBar.AbsoluteSize.Y - 18) }):Play()
-end
-
-function minimizeSize()
-    TweenService:Create(LeftPanel, TweenInfo.new(0.05), { Size = UDim2.fromOffset(LeftPanel.AbsoluteSize.X, Background.AbsoluteSize.Y - TopBar.AbsoluteSize.Y) }):Play()
-    TweenService:Create(RightPanel, TweenInfo.new(0.05), { Size = UDim2.fromOffset(0, Background.AbsoluteSize.Y - TopBar.AbsoluteSize.Y) }):Play()
-    TweenService:Create(TopBar, TweenInfo.new(0.05), { Size = UDim2.fromOffset(LeftPanel.AbsoluteSize.X, TopBar.AbsoluteSize.Y) }):Play()
-    TweenService:Create(ScrollingFrame, TweenInfo.new(0.05), { Size = UDim2.fromOffset(0, 119), Position = UDim2.fromOffset(0, Background.AbsoluteSize.Y - 119 - TopBar.AbsoluteSize.Y) }):Play()
-    TweenService:Create(CodeBox, TweenInfo.new(0.05), { Size = UDim2.fromOffset(0, Background.AbsoluteSize.Y - 119 - TopBar.AbsoluteSize.Y) }):Play()
-    TweenService:Create(LogList, TweenInfo.new(0.05), { Size = UDim2.fromOffset(LogList.AbsoluteSize.X, Background.AbsoluteSize.Y - TopBar.AbsoluteSize.Y - 18) }):Play()
-end
-
-function validateSize()
-    local x, y = Background.AbsoluteSize.X, Background.AbsoluteSize.Y
-    local screenSize = workspace.CurrentCamera.ViewportSize
-    if x + Background.AbsolutePosition.X > screenSize.X then x = math.clamp(x, 450, screenSize.X - Background.AbsolutePosition.X) end
-    if y + Background.AbsolutePosition.Y > screenSize.Y then y = math.clamp(y, 268, screenSize.Y - Background.AbsolutePosition.Y - 36) end
-    Background.Size = UDim2.fromOffset(x, y)
-end
-
-function backgroundUserInput(input)
-    local mousePos = UserInputService:GetMouseLocation() - Vector2.new(0, 36)
-    local inResize, type = isInResizeRange(mousePos)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 and inResize then
-        local lastPos = UserInputService:GetMouseLocation()
-        local offset = Background.AbsoluteSize - lastPos
-        RunService:BindToRenderStep("SIMPLESPY_RESIZE", 1, function()
-            local newPos = UserInputService:GetMouseLocation()
-            if newPos ~= lastPos then
-                local currentPos = newPos + offset
-                Background.Size = UDim2.fromOffset(
-                    math.clamp(currentPos.X, 450, workspace.CurrentCamera.ViewportSize.X - Background.AbsolutePosition.X),
-                    math.clamp(currentPos.Y, 268, workspace.CurrentCamera.ViewportSize.Y - Background.AbsolutePosition.Y - 36)
-                )
-                validateSize()
-                if sideClosed then minimizeSize() else maximizeSize() end
-                lastPos = newPos
-            end
-        end)
-        table.insert(connections, UserInputService.InputEnded:Connect(function(inputE)
-            if input == inputE then RunService:UnbindFromRenderStep("SIMPLESPY_RESIZE") end
-        end))
-    elseif isInDragRange(mousePos) then
-        onBarInput(input)
-    end
-end
-
-function getPlayerFromInstance(instance)
-    for _, v in pairs(Players:GetPlayers()) do
-        if v.Character and (instance:IsDescendantOf(v.Character) or instance == v.Character) then
-            return v
-        end
-    end
-end
-
-function eventSelect(frame)
-    if selected and selected.Log and selected.Log.Button then
-        TweenService:Create(selected.Log.Button, TweenInfo.new(0.5), { BackgroundColor3 = Color3.fromRGB(0, 0, 0) }):Play()
-        selected = nil
-    end
-    for _, v in pairs(logs) do
-        if frame == v.Log then selected = v end
-    end
-    if selected and selected.Log then
-        TweenService:Create(frame.Button, TweenInfo.new(0.5), { BackgroundColor3 = Color3.fromRGB(92, 126, 229) }):Play()
-        codebox:setRaw(selected.GenScript)
-    end
-    if sideClosed then toggleSideTray() end
-end
-
-function updateFunctionCanvas()
-    ScrollingFrame.CanvasSize = UDim2.fromOffset(UIGridLayout.AbsoluteContentSize.X, UIGridLayout.AbsoluteContentSize.Y)
-end
-
-function updateRemoteCanvas()
-    LogList.CanvasSize = UDim2.fromOffset(UIListLayout.AbsoluteContentSize.X, UIListLayout.AbsoluteContentSize.Y)
-end
-
-function makeToolTip(enable, text)
-    if enable then
-        if ToolTip.Visible then ToolTip.Visible = false RunService:UnbindFromRenderStep("ToolTip") end
-        local first = true
-        RunService:BindToRenderStep("ToolTip", 1, function()
-            local topLeft = Vector2.new(Mouse.X + 20, Mouse.Y + 20)
-            local bottomRight = topLeft + ToolTip.AbsoluteSize
-            if topLeft.X < 0 then topLeft = Vector2.new(0, topLeft.Y) end
-            if bottomRight.X > workspace.CurrentCamera.ViewportSize.X then topLeft = Vector2.new(workspace.CurrentCamera.ViewportSize.X - ToolTip.AbsoluteSize.X, topLeft.Y) end
-            if topLeft.Y < 0 then topLeft = Vector2.new(topLeft.X, 0) end
-            if bottomRight.Y > workspace.CurrentCamera.ViewportSize.Y - 35 then topLeft = Vector2.new(topLeft.X, workspace.CurrentCamera.ViewportSize.Y - ToolTip.AbsoluteSize.Y - 35) end
-            if first then
-                ToolTip.Position = UDim2.fromOffset(topLeft.X, topLeft.Y)
-                first = false
-            else
-                ToolTip:TweenPosition(UDim2.fromOffset(topLeft.X, topLeft.Y), "Out", "Linear", 0.1)
-            end
-        end)
-        TextLabel.Text = text
-        ToolTip.Visible = true
-    else
-        if ToolTip.Visible then ToolTip.Visible = false RunService:UnbindFromRenderStep("ToolTip") end
-    end
-end
-
-function newButton(name, onClick)
-    local button = FunctionTemplate:Clone()
-    button.Text.Text = name
-    button.Button.MouseEnter:Connect(function() makeToolTip(true, name) end)
-    button.Button.MouseLeave:Connect(function() makeToolTip(false) end)
-    button.AncestryChanged:Connect(function() makeToolTip(false) end)
-    button.Button.MouseButton1Click:Connect(onClick)
-    button.Parent = ScrollingFrame
-    updateFunctionCanvas()
-end
-
-function newRemote(type, name, args, remote, function_info, blocked, src, returnValue)
-    local remoteFrame = RemoteTemplate:Clone()
-    remoteFrame.Text.Text = string.sub(name, 1, 50)
-    remoteFrame.ColorBar.BackgroundColor3 = type == "event" and Color3.new(255, 242, 0) or Color3.fromRGB(99, 86, 245)
-    local id = Instance.new("IntValue")
-    id.Name = "ID"
-    id.Value = #logs + 1
-    id.Parent = remoteFrame
-    local log = {
-        Name = name,
-        Function = function_info,
-        Remote = { remote = remote },
-        Log = remoteFrame,
-        Blocked = blocked,
-        Source = src,
-        GenScript = "-- Generating...",
-        ReturnValue = returnValue,
-    }
-    logs[#logs + 1] = log
-    schedule(function()
-        log.GenScript = genScript(remote, args)
-        if blocked then
-            log.GenScript = "-- THIS REMOTE WAS BLOCKED\n\n" .. log.GenScript
-        end
-    end)
-    remoteFrame.Button.MouseButton1Click:Connect(function()
-        eventSelect(remoteFrame)
-    end)
-    remoteFrame.LayoutOrder = layoutOrderNum
-    layoutOrderNum = layoutOrderNum - 1
-    remoteFrame.Parent = LogList
-    table.insert(remoteLogs, 1, { nil, remoteFrame })
-    clean()
-    updateRemoteCanvas()
-end
-
-function genScript(remote, args)
-    prevTables = {}
-    local gen = ""
-    if #args > 0 then
-        gen = v2v({ args = args }) .. "\n"
-        if not remote:IsDescendantOf(game) and not getnilrequired then
-            gen = "function getNil(name,class) for _,v in pairs(getnilinstances())do if v.ClassName==class and v.Name==name then return v;end end end\n\n" .. gen
-        end
-        if remote:IsA("RemoteEvent") then
-            gen = gen .. v2s(remote) .. ":FireServer(unpack(args))"
-        elseif remote:IsA("RemoteFunction") then
-            gen = gen .. v2s(remote) .. ":InvokeServer(unpack(args))"
-        end
-    else
-        if remote:IsA("RemoteEvent") then
-            gen = gen .. v2s(remote) .. ":FireServer()"
-        elseif remote:IsA("RemoteFunction") then
-            gen = gen .. v2s(remote) .. ":InvokeServer()"
-        end
-    end
-    gen = "-- Script generated by SimpleSpy\n\n" .. gen
-    prevTables = {}
-    return gen
-end
-
--- (the rest of the functions like v2s, t2s, k2s, f2s, i2p, u2s, v2p, formatstr, handlespecials, safetostring, getScriptFromSrc, schedule, scheduleWait, taskscheduler, remoteHandler, hookRemote, newnamecall, newFireServer, newInvokeServer, toggleSpy, toggleSpyMethod, shutdown remain unchanged — they are already clean)
-
--- main
-if not _G.SimpleSpyExecuted then
-    local succeeded = pcall(function()
-        if not RunService:IsClient() then return end
-        if not hookfunction or not getrawmetatable or not setreadonly then return end
-        _G.SimpleSpyShutdown = shutdown
-        ContentProvider:PreloadAsync({
-            "rbxassetid://6065821980",
-            "rbxassetid://6065774948",
-            "rbxassetid://6065821086",
-            "rbxassetid://6065821596",
-            ImageLabel, ImageLabel_2, ImageLabel_3,
-        })
-        onToggleButtonClick()
-        RemoteTemplate.Parent = nil
-        FunctionTemplate.Parent = nil
-        codebox = Highlight.new(CodeBox)
-        codebox:setRaw("")
-        getgenv().SimpleSpy = SimpleSpy
-        TextLabel:GetPropertyChangedSignal("Text"):Connect(scaleToolTip)
-        MinimizeButton.MouseButton1Click:Connect(toggleMinimize)
-        MaximizeButton.MouseButton1Click:Connect(toggleSideTray)
-        Simple.MouseButton1Click:Connect(onToggleButtonClick)
-        CloseButton.MouseButton1Click:Connect(function()
-            if Background then Background.Visible = false end
-            if mobileToggle then mobileToggle:Destroy() end
-        end)
-        table.insert(connections, UserInputService.InputBegan:Connect(backgroundUserInput))
-        connectResize()
-        SimpleSpy2.Enabled = true
-        schedulerconnect = RunService.Heartbeat:Connect(taskscheduler)
-        if syn and syn.protect_gui then pcall(syn.protect_gui, SimpleSpy2) end
-        bringBackOnResize()
-        SimpleSpy2.Parent = CoreGui
-        _G.SimpleSpyExecuted = true
-        if not Players.LocalPlayer then Players:GetPropertyChangedSignal("LocalPlayer"):Wait() end
-    end)
-    if not succeeded then
-        SimpleSpy2:Destroy()
-        hookfunction(remoteEvent.FireServer, originalEvent)
-        hookfunction(remoteFunction.InvokeServer, originalFunction)
-        if hookmetamethod then
-            if original then hookmetamethod(game, "__namecall", original) end
-        else
-            setreadonly(gm, false)
-            gm.__namecall = original
-            setreadonly(gm, true)
-        end
-        return
-    end
-else
-    SimpleSpy2:Destroy()
-    return
-end
-
--- Add-ons (cleaned)
-newButton("Copy Code", function() setclipboard(codebox:getString()) end)
-
-newButton("Copy Remote", function()
-    if selected then setclipboard(v2s(selected.Remote.remote)) end
 end)
 
-newButton("Run Code", function()
-    local succeeded = pcall(function() return loadstring(codebox:getString())() end)
-end)
+-- Dragging
+local dragging = false
+local dragStart = nil
+local startPos = nil
 
-newButton("Get Script", function()
-    if selected then setclipboard(SimpleSpy:ValueToString(selected.Source)) end
-end)
-
-newButton("Clr Logs", function()
-    logs = {}
-    for _, v in pairs(LogList:GetChildren()) do
-        if not v:IsA("UIListLayout") then v:Destroy() end
+circleBtn.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = circleBtn.Position
+        print("[Debug] Drag started")
     end
-    codebox:setRaw("")
-    selected = nil
 end)
 
-newButton("Exclude (i)", function()
-    if selected then blacklist[selected.Remote.remote] = true end
+UserInputService.InputChanged:Connect(function(input)
+    if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+        local delta = input.Position - dragStart
+        circleBtn.Position = UDim2.new(
+            startPos.X.Scale,
+            startPos.X.Offset + delta.X,
+            startPos.Y.Scale,
+            startPos.Y.Offset + delta.Y
+        )
+    end
 end)
 
-newButton("Exclude (n)", function()
-    if selected then blacklist[selected.Name] = true end
+circleBtn.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = false
+        print("[Debug] Drag ended")
+    end
 end)
 
-newButton("Clr Blacklist", function()
-    blacklist = {}
-end)
-
-newButton("Block (i)", function()
-    if selected and selected.Remote.remote then blocklist[selected.Remote.remote] = true end
-end)
-
-newButton("Block (n)", function()
-    if selected then blocklist[selected.Name] = true end
-end)
-
-newButton("Clr Blocklist", function()
-    blocklist = {}
-end)
-
-newButton("Decompile", function()
-    if selected and selected.Source then codebox:setRaw(decompile(selected.Source)) end
-end)
-
-newButton("Disable Info", function()
-    funcEnabled = not funcEnabled
-end)
-
-newButton("Autoblock", function()
-    autoblock = not autoblock
-    history = {}
-    excluding = {}
-end)
-
-newButton("CallingScript", function()
-    useGetCallingScript = not useGetCallingScript
-end)
-
-newButton("KeyToString", function()
-    keyToString = not keyToString
-end)
-
-newButton("ToggleReturnValues", function()
-    recordReturnValues = not recordReturnValues
-end)
-
-newButton("GetReturnValue", function()
-    if selected then codebox:setRaw(SimpleSpy:ValueToVar(selected.ReturnValue, "returnValue")) end
-end)
+print("[Mobile Toggle] Setup complete! Button should be visible in center-upper screen.")

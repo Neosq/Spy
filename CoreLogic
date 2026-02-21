@@ -1,4 +1,4 @@
--- CoreLogic - FULL FIXED VERSION with debug prints
+-- CoreLogic - FULL FIXED VERSION (no silent fail, debug everywhere)
 
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -508,22 +508,22 @@ function genScript(remote, args)
     return gen
 end
 
--- main - with debug prints and no silent fail
+-- main - debug + safe execution
 print("[SimpleSpy] Starting main setup...")
 
 if not _G.SimpleSpyExecuted then
     local success, err = pcall(function()
-        print("[SimpleSpy] Step 1: Checking client...")
+        print("[SimpleSpy] 1. Checking client...")
         if not RunService:IsClient() then error("Not client") end
 
-        print("[SimpleSpy] Step 2: Checking required functions...")
+        print("[SimpleSpy] 2. Checking required functions...")
         if not hookfunction or not getrawmetatable or not setreadonly then
             error("Missing required functions")
         end
 
         _G.SimpleSpyShutdown = shutdown
 
-        print("[SimpleSpy] Step 3: Preloading assets...")
+        print("[SimpleSpy] 3. Preloading assets (non-critical)...")
         local preloadSuccess, preloadErr = pcall(ContentProvider.PreloadAsync, ContentProvider, {
             "rbxassetid://6065821980",
             "rbxassetid://6065774948",
@@ -532,25 +532,24 @@ if not _G.SimpleSpyExecuted then
             ImageLabel, ImageLabel_2, ImageLabel_3,
         })
         if not preloadSuccess then
-            warn("[SimpleSpy] Step 3: Preload failed (non-critical): " .. tostring(preloadErr))
+            warn("[SimpleSpy] Preload failed (non-critical): " .. tostring(preloadErr))
         else
-            print("[SimpleSpy] Step 3: Preload success")
+            print("[SimpleSpy] Preload success")
         end
 
-        print("[SimpleSpy] Step 4: Setup UI elements...")
+        print("[SimpleSpy] 4. Setup UI elements...")
         onToggleButtonClick()
         RemoteTemplate.Parent = nil
         FunctionTemplate.Parent = nil
 
-        print("[SimpleSpy] Step 5: Creating codebox...")
+        print("[SimpleSpy] 5. Creating codebox...")
         local codeboxSuccess, codeboxErr = pcall(function()
             codebox = Highlight.new(CodeBox)
             codebox:setRaw("")
         end)
         if not codeboxSuccess then
-            warn("[SimpleSpy] Step 5: Codebox creation failed: " .. tostring(codeboxErr))
-            -- Fallback: simple TextBox
-            print("[SimpleSpy] Step 5: Using fallback TextBox for code display")
+            warn("[SimpleSpy] Codebox failed: " .. tostring(codeboxErr))
+            print("[SimpleSpy] Using fallback TextBox for code display")
             codebox = {
                 setRaw = function(self, text)
                     local tb = Instance.new("TextBox")
@@ -569,14 +568,14 @@ if not _G.SimpleSpyExecuted then
                 end
             }
         else
-            print("[SimpleSpy] Step 5: Codebox created successfully")
+            print("[SimpleSpy] Codebox created")
         end
 
-        print("[SimpleSpy] Step 6: Setting global SimpleSpy...")
+        print("[SimpleSpy] 6. Setting global SimpleSpy...")
         getgenv().SimpleSpy = SimpleSpy
         TextLabel:GetPropertyChangedSignal("Text"):Connect(scaleToolTip)
 
-        print("[SimpleSpy] Step 7: Connecting buttons...")
+        print("[SimpleSpy] 7. Connecting buttons...")
         MinimizeButton.MouseButton1Click:Connect(toggleMinimize)
         MaximizeButton.MouseButton1Click:Connect(toggleSideTray)
         Simple.MouseButton1Click:Connect(onToggleButtonClick)
@@ -589,7 +588,7 @@ if not _G.SimpleSpyExecuted then
         table.insert(connections, UserInputService.InputBegan:Connect(backgroundUserInput))
         connectResize()
 
-        print("[SimpleSpy] Step 8: Enabling GUI...")
+        print("[SimpleSpy] 8. Enabling GUI...")
         SimpleSpy2.Enabled = true
         schedulerconnect = RunService.Heartbeat:Connect(taskscheduler)
 
@@ -602,7 +601,7 @@ if not _G.SimpleSpyExecuted then
 
         bringBackOnResize()
 
-        print("[SimpleSpy] Step 9: Parenting GUI...")
+        print("[SimpleSpy] 9. Parenting GUI...")
         local parentSuccess, parentErr = pcall(function()
             SimpleSpy2.Parent = CoreGui
         end)
@@ -617,7 +616,7 @@ if not _G.SimpleSpyExecuted then
                 warn("[SimpleSpy] PlayerGui fallback failed: " .. tostring(fallbackErr))
             end
         else
-            print("[SimpleSpy] Step 9: GUI parented to CoreGui - GUI should be visible!")
+            print("[SimpleSpy] GUI parented to CoreGui - GUI should be visible!")
         end
 
         _G.SimpleSpyExecuted = true
@@ -628,7 +627,7 @@ if not _G.SimpleSpyExecuted then
     end)
 
     if not success then
-        warn("[SimpleSpy] CRITICAL ERROR in setup: " .. tostring(err))
+        warn("[SimpleSpy] CRITICAL SETUP ERROR: " .. tostring(err))
         if SimpleSpy2 then SimpleSpy2:Destroy() end
         hookfunction(remoteEvent.FireServer, originalEvent)
         hookfunction(remoteFunction.InvokeServer, originalFunction)
@@ -642,7 +641,7 @@ if not _G.SimpleSpyExecuted then
         return
     end
 
-    print("[SimpleSpy] Setup complete!")
+    print("[SimpleSpy] Setup complete - GUI should appear!")
 else
     if SimpleSpy2 then SimpleSpy2:Destroy() end
     return

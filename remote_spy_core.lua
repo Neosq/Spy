@@ -1,23 +1,41 @@
 local remote_spy_core = {}
 
+-- Зависимости
+local SS        = getgenv().SS
+local utils     = SS.utils
+local log_manager = SS.log_manager
+
+local cloneref      = cloneref or function(x) return x end
+local clonefunction = clonefunction or function(x) return x end
+local newcclosure   = newcclosure or function(x) return x end
+local hookfunction  = hookfunction or function() end
+local hookmetamethod = hookmetamethod or function() end
+local getrawmetatable = getrawmetatable or function() end
+local checkcaller   = checkcaller or function() return false end
+local getnamecallmethod = getnamecallmethod or function() return nil end
+
+local IsCyclicTable = utils.IsCyclicTable
+local deepclone     = utils.deepclone
+local getcallingscript = utils.getcallingscript
+
 local originalnamecall
-local originalEvent = Instance.new("RemoteEvent").FireServer
+local originalEvent    = Instance.new("RemoteEvent").FireServer
 local originalFunction = Instance.new("RemoteFunction").InvokeServer
 
-local toggle = false
+local toggle    = false
 local blacklist = {}
 local blocklist = {}
 local connectedRemotes = {}
-local history = {}
+local history   = {}
 local excluding = {}
 
-local NamecallHandler = Instance.new("BindableEvent")
+local NamecallHandler   = Instance.new("BindableEvent")
 local GetDebugIdHandler = Instance.new("BindableFunction")
 
 local OldDebugId = game.GetDebugId
 
 GetDebugIdHandler.OnInvoke = function(obj)
-    return OldDebugId(obj)
+    return OldDebugId(game, obj)
 end
 
 local function ThreadGetDebugId(obj)
@@ -28,12 +46,24 @@ local function tablecheck(tabletocheck, instance, id)
     return tabletocheck[id] or tabletocheck[instance.Name]
 end
 
+local function getConfigs()
+    return getgenv().SS.configs
+end
+
+local function schedule(f, ...)
+    local args = {...}
+    task.spawn(function()
+        f(table.unpack(args))
+    end)
+end
+
 local function remoteHandler(data)
+    local configs = getConfigs()
+    if not configs then return end
+
     if configs.autoblock then
         local id = data.id
-        if excluding[id] then
-            return
-        end
+        if excluding[id] then return end
         if not history[id] then
             history[id] = {badOccurances = 0, lastCall = tick()}
         end
@@ -50,17 +80,18 @@ local function remoteHandler(data)
     end
 
     if data.remote:IsA("RemoteEvent") and string.lower(data.method) == "fireserver" then
-        newRemote("event", data)
+        log_manager.newRemote("event", data)
     elseif data.remote:IsA("RemoteFunction") and string.lower(data.method) == "invokeserver" then
-        newRemote("function", data)
+        log_manager.newRemote("function", data)
     end
 end
 
 local function newindex(method, originalfunction, self, ...)
+    local configs = getConfigs()
     if typeof(self) == "Instance" then
         local remote = cloneref(self)
         if remote:IsA("RemoteEvent") or remote:IsA("RemoteFunction") then
-            if not configs.logcheckcaller and checkcaller() then
+            if configs and not configs.logcheckcaller and checkcaller() then
                 return originalfunction(self, ...)
             end
             local id = ThreadGetDebugId(remote)
@@ -80,7 +111,7 @@ local function newindex(method, originalfunction, self, ...)
                     returnvalue = {}
                 }
 
-                if configs.funcEnabled then
+                if configs and configs.funcEnabled then
                     data.infofunc = debug.info(2, "f")
                     local calling = getcallingscript and getcallingscript() or nil
                     data.callingscript = calling and cloneref(calling) or nil
@@ -89,9 +120,7 @@ local function newindex(method, originalfunction, self, ...)
                 schedule(remoteHandler, data)
             end
 
-            if blockcheck then
-                return
-            end
+            if blockcheck then return end
         end
     end
     return originalfunction(self, ...)
@@ -103,7 +132,8 @@ local newnamecall = newcclosure(function(self, ...)
         if typeof(self) == "Instance" then
             local remote = cloneref(self)
             if remote:IsA("RemoteEvent") or remote:IsA("RemoteFunction") then
-                if not configs.logcheckcaller and checkcaller() then
+                local configs = getConfigs()
+                if configs and not configs.logcheckcaller and checkcaller() then
                     return originalnamecall(self, ...)
                 end
                 local id = ThreadGetDebugId(remote)
@@ -123,7 +153,7 @@ local newnamecall = newcclosure(function(self, ...)
                         returnvalue = {}
                     }
 
-                    if configs.funcEnabled then
+                    if configs and configs.funcEnabled then
                         data.infofunc = debug.info(2, "f")
                         local calling = getcallingscript and getcallingscript() or nil
                         data.callingscript = calling and cloneref(calling) or nil
@@ -132,9 +162,7 @@ local newnamecall = newcclosure(function(self, ...)
                     schedule(remoteHandler, data)
                 end
 
-                if blockcheck then
-                    return
-                end
+                if blockcheck then return end
             end
         end
     end
@@ -173,7 +201,7 @@ local function toggleSpy()
         local oldnamecall
         if syn and syn.v3 then
             oldnamecall = syn.oth.hook(getrawmetatable(game).__namecall, clonefunction(newnamecall))
-            originalEvent = syn.oth.hook(Instance.new("RemoteEvent").FireServer, clonefunction(newFireServer))
+            originalEvent    = syn.oth.hook(Instance.new("RemoteEvent").FireServer, clonefunction(newFireServer))
             originalFunction = syn.oth.hook(Instance.new("RemoteFunction").InvokeServer, clonefunction(newInvokeServer))
         else
             if hookmetamethod then
@@ -181,24 +209,28 @@ local function toggleSpy()
             else
                 oldnamecall = hookfunction(getrawmetatable(game).__namecall, clonefunction(newnamecall))
             end
-            originalEvent = hookfunction(Instance.new("RemoteEvent").FireServer, clonefunction(newFireServer))
+            originalEvent    = hookfunction(Instance.new("RemoteEvent").FireServer, clonefunction(newFireServer))
             originalFunction = hookfunction(Instance.new("RemoteFunction").InvokeServer, clonefunction(newInvokeServer))
         end
         originalnamecall = originalnamecall or function(...)
             return oldnamecall(...)
         end
+        toggle = true
+        remote_spy_core.toggle = true
     else
         disablehooks()
+        toggle = false
+        remote_spy_core.toggle = false
     end
 end
 
-remote_spy_core.toggleSpy = toggleSpy
+remote_spy_core.toggleSpy    = toggleSpy
 remote_spy_core.disablehooks = disablehooks
-remote_spy_core.toggle = toggle
-remote_spy_core.blacklist = blacklist
-remote_spy_core.blocklist = blocklist
+remote_spy_core.toggle       = toggle
+remote_spy_core.blacklist    = blacklist
+remote_spy_core.blocklist    = blocklist
 remote_spy_core.connectedRemotes = connectedRemotes
-remote_spy_core.history = history
-remote_spy_core.excluding = excluding
+remote_spy_core.history      = history
+remote_spy_core.excluding    = excluding
 
 return remote_spy_core

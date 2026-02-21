@@ -20,7 +20,7 @@ local TweenService     = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 local RunService       = game:GetService("RunService")
 local TextService      = game:GetService("TextService")
-local GuiInset         = game:GetService("GuiService"):GetGuiInset()
+local GuiInset         = select(1, game:GetService("GuiService"):GetGuiInset())
 
 local closed = false
 local mainClosing = false
@@ -303,10 +303,10 @@ end
 
 local function onBarInput(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        local lastPos = input.Position
+        local lastPos = Vector2.new(input.Position.X, input.Position.Y)
         local mainPos = Background.AbsolutePosition
-        local offset = mainPos - Vector2.new(lastPos.X, lastPos.Y)
-        local currentPos = offset + Vector2.new(lastPos.X, lastPos.Y)
+        local offset = mainPos - lastPos
+        local currentPos = offset + lastPos
 
         local dragConn
         dragConn = RunService.RenderStepped:Connect(function()
@@ -314,10 +314,10 @@ local function onBarInput(input)
                 dragConn:Disconnect()
                 return
             end
-            local newPos = input.Position
+            local newPos = Vector2.new(input.Position.X, input.Position.Y)
             if newPos ~= lastPos then
-                local currentX = (offset + Vector2.new(newPos.X, newPos.Y)).X
-                local currentY = (offset + Vector2.new(newPos.X, newPos.Y)).Y
+                local currentX = (offset + newPos).X
+                local currentY = (offset + newPos).Y
                 local viewportSize = workspace.CurrentCamera.ViewportSize
                 currentX = math.clamp(currentX, 0, viewportSize.X - (sideClosed and 131 or TopBar.AbsoluteSize.X))
                 currentY = math.clamp(currentY, 0, viewportSize.Y - (closed and 19 or Background.AbsoluteSize.Y) - GuiInset.Y)
@@ -342,8 +342,8 @@ local function backgroundUserInput(input)
     local inResizeRange, type = isInResizeRange(mousePos)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
         if inResizeRange then
-            local lastPos = input.Position
-            local offset = Background.AbsoluteSize - Vector2.new(lastPos.X, lastPos.Y)
+            local lastPos = Vector2.new(input.Position.X, input.Position.Y)
+            local offset = Background.AbsoluteSize - lastPos
             local currentPos = lastPos + offset
 
             local resizeConn
@@ -352,7 +352,7 @@ local function backgroundUserInput(input)
                     resizeConn:Disconnect()
                     return
                 end
-                local newPos = input.Position
+                local newPos = Vector2.new(input.Position.X, input.Position.Y)
                 if newPos ~= lastPos then
                     local currentX = (newPos + offset).X
                     local currentY = (newPos + offset).Y

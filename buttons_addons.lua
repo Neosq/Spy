@@ -1,5 +1,46 @@
 local buttons_addons = {}
 
+-- Зависимости из getgenv().SS
+local SS              = getgenv().SS
+local gui_elements    = SS.gui_elements
+local gui_logic       = SS.gui_logic
+local log_manager     = SS.log_manager
+local remote_spy_core = SS.remote_spy_core
+local serializer      = SS.serializer
+local utils           = SS.utils
+
+local ScrollingFrame  = gui_elements.ScrollingFrame
+local LogList         = gui_elements.LogList
+local TextLabel       = gui_elements.TextLabel
+local SimpleSpy3      = gui_elements.SimpleSpy3
+
+local makeToolTip         = gui_logic.makeToolTip
+local updateFunctionCanvas = log_manager.updateFunctionCanvas
+local logthread           = log_manager.logthread
+local logs                = log_manager.logs
+local clear               = log_manager.clear
+local selected            = log_manager.selected
+local blacklist           = log_manager.blacklist
+local blocklist           = log_manager.blocklist
+local history             = log_manager.history
+local excluding           = log_manager.excluding
+local DecompiledScripts   = log_manager.DecompiledScripts
+local OldDebugId          = log_manager.OldDebugId
+local codebox             = log_manager.codebox
+
+local v2s        = serializer.v2s
+local v2v        = serializer.v2v
+local configs    = SS.configs or getgenv().SSConfigs
+
+local RunService       = game:GetService("RunService")
+local setclipboard     = utils.setclipboard
+local islclosure       = utils.islclosure
+local getinfo          = utils.getinfo
+local deepclone        = utils.deepclone
+local getconstants     = utils.getconstants
+local getupvalues      = utils.getupvalues
+local request          = utils.request
+
 local function newButton(name, descriptionFunc, onClick)
     local FunctionTemplate = Instance.new("Frame")
     FunctionTemplate.Name = "FunctionTemplate"
@@ -46,23 +87,23 @@ local function newButton(name, descriptionFunc, onClick)
     Button.TextSize = 14
 
     Button.MouseEnter:Connect(function()
-        makeToolTip(true, descriptionFunc())
+        gui_logic.makeToolTip(true, descriptionFunc())
     end)
 
     Button.MouseLeave:Connect(function()
-        makeToolTip(false)
+        gui_logic.makeToolTip(false)
     end)
 
     FunctionTemplate.AncestryChanged:Connect(function()
-        makeToolTip(false)
+        gui_logic.makeToolTip(false)
     end)
 
     Button.MouseButton1Click:Connect(function(...)
-        logthread(coroutine.running())
+        log_manager.logthread(coroutine.running())
         onClick(FunctionTemplate, ...)
     end)
 
-    updateFunctionCanvas()
+    log_manager.updateFunctionCanvas()
 end
 
 local function createButtons()
@@ -70,7 +111,7 @@ local function createButtons()
         "Copy Code",
         function() return "Click to copy code" end,
         function()
-            setclipboard(codebox:getString())
+            setclipboard(log_manager.codebox:getString())
             TextLabel.Text = "Copied successfully!"
         end
     )
@@ -79,8 +120,9 @@ local function createButtons()
         "Copy Remote",
         function() return "Click to copy the path of the remote" end,
         function()
-            if selected and selected.Remote then
-                setclipboard(v2s(selected.Remote))
+            local sel = log_manager.selected
+            if sel and sel.Remote then
+                setclipboard(serializer.v2s(sel.Remote))
                 TextLabel.Text = "Copied!"
             end
         end
@@ -90,17 +132,18 @@ local function createButtons()
         "Run Code",
         function() return "Click to execute code" end,
         function()
-            local Remote = selected and selected.Remote
+            local sel = log_manager.selected
+            local Remote = sel and sel.Remote
             if Remote then
                 TextLabel.Text = "Executing..."
                 xpcall(function()
                     local returnvalue
                     if Remote:IsA("RemoteEvent") then
-                        returnvalue = Remote:FireServer(unpack(selected.args))
+                        returnvalue = Remote:FireServer(unpack(sel.args))
                     else
-                        returnvalue = Remote:InvokeServer(unpack(selected.args))
+                        returnvalue = Remote:InvokeServer(unpack(sel.args))
                     end
-                    TextLabel.Text = ("Executed successfully!\n%s"):format(v2s(returnvalue))
+                    TextLabel.Text = ("Executed successfully!\n%s"):format(serializer.v2s(returnvalue))
                 end, function(err)
                     TextLabel.Text = ("Execution error!\n%s"):format(err)
                 end)
@@ -114,11 +157,12 @@ local function createButtons()
         "Get Script",
         function() return "Click to copy calling script to clipboard\nWARNING: Not super reliable, nil == could not find" end,
         function()
-            if selected then
-                if not selected.Source then
-                    selected.Source = rawget(getfenv(selected.Function), "script")
+            local sel = log_manager.selected
+            if sel then
+                if not sel.Source then
+                    sel.Source = rawget(getfenv(sel.Function), "script")
                 end
-                setclipboard(v2s(selected.Source))
+                setclipboard(serializer.v2s(sel.Source))
                 TextLabel.Text = "Done!"
             end
         end
@@ -128,34 +172,36 @@ local function createButtons()
         "Function Info",
         function() return "Click to view calling function information" end,
         function()
-            local func = selected and selected.Function
+            local sel = log_manager.selected
+            local func = sel and sel.Function
             if func then
                 local typeoffunc = typeof(func)
                 if typeoffunc ~= 'string' then
-                    codebox:setRaw("--[[Generating Function Info please wait]]")
+                    log_manager.codebox:setRaw("--[[Generating Function Info please wait]]")
                     RunService.Heartbeat:Wait()
-                    local lclosure = islclosure(func)
+                    local lclosure = utils.islclosure(func)
                     local SourceScript = rawget(getfenv(func), "script")
-                    local CallingScript = selected.Source or nil
+                    local CallingScript = sel.Source or nil
                     local info = {
-                        info = getinfo(func),
-                        constants = lclosure and deepclone(getconstants(func)) or "N/A --Lua Closure expected got C Closure",
-                        upvalues = deepclone(getupvalues(func)),
+                        info = utils.getinfo(func),
+                        constants = lclosure and utils.deepclone(utils.getconstants(func)) or "N/A --Lua Closure expected got C Closure",
+                        upvalues = utils.deepclone(utils.getupvalues(func)),
                         script = {
                             SourceScript = SourceScript or 'nil',
                             CallingScript = CallingScript or 'nil'
                         }
                     }
                     if configs.advancedinfo then
-                        local Remote = selected.Remote
+                        local Remote = sel.Remote
+                        local OldDebugId = log_manager.OldDebugId
                         info["advancedinfo"] = {
-                            Metamethod = selected.metamethod,
+                            Metamethod = sel.metamethod,
                             DebugId = {
                                 SourceScriptDebugId = SourceScript and typeof(SourceScript) == "Instance" and OldDebugId(SourceScript) or "N/A",
                                 CallingScriptDebugId = CallingScript and typeof(CallingScript) == "Instance" and OldDebugId(CallingScript) or "N/A",
                                 RemoteDebugId = OldDebugId(Remote)
                             },
-                            Protos = lclosure and getprotos(func) or "N/A --Lua Closure expected got C Closure"
+                            Protos = lclosure and (getprotos and getprotos(func) or "N/A") or "N/A --Lua Closure expected got C Closure"
                         }
                         if Remote:IsA("RemoteFunction") then
                             info["advancedinfo"]["OnClientInvoke"] = getcallbackmember and (getcallbackmember(Remote, "OnClientInvoke") or "N/A") or "N/A --Missing function getcallbackmember"
@@ -169,10 +215,10 @@ local function createButtons()
                             end
                         end
                     end
-                    codebox:setRaw("--[[Converting table to string please wait]]")
-                    selected.Function = v2v({functionInfo = info})
+                    log_manager.codebox:setRaw("--[[Converting table to string please wait]]")
+                    sel.Function = serializer.v2v({functionInfo = info})
                 end
-                codebox:setRaw("-- Calling function info\n-- Generated by the SimpleSpy V3 serializer\n\n" .. selected.Function)
+                log_manager.codebox:setRaw("-- Calling function info\n-- Generated by the SimpleSpy V3 serializer\n\n" .. sel.Function)
                 TextLabel.Text = "Done! Function info generated by the SimpleSpy V3 Serializer."
             else
                 TextLabel.Text = "Error! Selected function was not found."
@@ -185,14 +231,14 @@ local function createButtons()
         function() return "Click to clear logs" end,
         function()
             TextLabel.Text = "Clearing..."
-            clear(logs)
+            log_manager.clear(log_manager.logs)
             for _, v in next, LogList:GetChildren() do
                 if not v:IsA("UIListLayout") then
                     v:Destroy()
                 end
             end
-            codebox:setRaw("")
-            selected = nil
+            log_manager.codebox:setRaw("")
+            log_manager.selected = nil
             TextLabel.Text = "Logs cleared!"
         end
     )
@@ -201,8 +247,9 @@ local function createButtons()
         "Exclude (i)",
         function() return "Click to exclude this Remote.\nExcluding a remote makes SimpleSpy ignore it, but it will continue to be usable." end,
         function()
-            if selected then
-                blacklist[OldDebugId(selected.Remote)] = true
+            local sel = log_manager.selected
+            if sel then
+                log_manager.blacklist[log_manager.OldDebugId(sel.Remote)] = true
                 TextLabel.Text = "Excluded!"
             end
         end
@@ -212,8 +259,9 @@ local function createButtons()
         "Exclude (n)",
         function() return "Click to exclude all remotes with this name.\nExcluding a remote makes SimpleSpy ignore it, but it will continue to be usable." end,
         function()
-            if selected then
-                blacklist[selected.Name] = true
+            local sel = log_manager.selected
+            if sel then
+                log_manager.blacklist[sel.Name] = true
                 TextLabel.Text = "Excluded!"
             end
         end
@@ -223,7 +271,7 @@ local function createButtons()
         "Clr Blacklist",
         function() return "Click to clear the blacklist.\nExcluding a remote makes SimpleSpy ignore it, but it will continue to be usable." end,
         function()
-            blacklist = {}
+            log_manager.blacklist = {}
             TextLabel.Text = "Blacklist cleared!"
         end
     )
@@ -232,8 +280,9 @@ local function createButtons()
         "Block (i)",
         function() return "Click to stop this remote from firing.\nBlocking a remote won't remove it from SimpleSpy logs, but it will not continue to fire the server." end,
         function()
-            if selected then
-                blocklist[OldDebugId(selected.Remote)] = true
+            local sel = log_manager.selected
+            if sel then
+                log_manager.blocklist[log_manager.OldDebugId(sel.Remote)] = true
                 TextLabel.Text = "Blocked!"
             end
         end
@@ -243,8 +292,9 @@ local function createButtons()
         "Block (n)",
         function() return "Click to stop remotes with this name from firing.\nBlocking a remote won't remove it from SimpleSpy logs, but it will not continue to fire the server." end,
         function()
-            if selected then
-                blocklist[selected.Name] = true
+            local sel = log_manager.selected
+            if sel then
+                log_manager.blocklist[sel.Name] = true
                 TextLabel.Text = "Blocked!"
             end
         end
@@ -254,7 +304,7 @@ local function createButtons()
         "Clr Blocklist",
         function() return "Click to stop blocking remotes.\nBlocking a remote won't remove it from SimpleSpy logs, but it will not continue to fire the server." end,
         function()
-            blocklist = {}
+            log_manager.blocklist = {}
             TextLabel.Text = "Blocklist cleared!"
         end
     )
@@ -264,21 +314,22 @@ local function createButtons()
         function() return "Decompile source script" end,
         function()
             if decompile then
-                if selected and selected.Source then
-                    local Source = selected.Source
-                    if not DecompiledScripts[Source] then
-                        codebox:setRaw("--[[Decompiling]]")
+                local sel = log_manager.selected
+                if sel and sel.Source then
+                    local Source = sel.Source
+                    if not log_manager.DecompiledScripts[Source] then
+                        log_manager.codebox:setRaw("--[[Decompiling]]")
                         xpcall(function()
                             local decompiledsource = decompile(Source):gsub("-- Decompiled with the Synapse X Luau decompiler.", "")
-                            local Sourcev2s = v2s(Source)
+                            local Sourcev2s = serializer.v2s(Source)
                             if decompiledsource:find("script") and Sourcev2s then
-                                DecompiledScripts[Source] = ("local script = %s\n%s"):format(Sourcev2s, decompiledsource)
+                                log_manager.DecompiledScripts[Source] = ("local script = %s\n%s"):format(Sourcev2s, decompiledsource)
                             end
                         end, function(err)
-                            codebox:setRaw(("--[[\nAn error has occured\n%s\n]]"):format(err))
+                            log_manager.codebox:setRaw(("--[[\nAn error has occured\n%s\n]]"):format(err))
                         end)
                     end
-                    codebox:setRaw(DecompiledScripts[Source] or "--No Source Found")
+                    log_manager.codebox:setRaw(log_manager.DecompiledScripts[Source] or "--No Source Found")
                     TextLabel.Text = "Done!"
                 else
                     TextLabel.Text = "Source not found!"
@@ -304,8 +355,8 @@ local function createButtons()
         function()
             configs.autoblock = not configs.autoblock
             TextLabel.Text = string.format("[%s] [BETA] Intelligently detects and excludes spammy remote calls from logs", configs.autoblock and "ENABLED" or "DISABLED")
-            history = {}
-            excluding = {}
+            log_manager.history = {}
+            log_manager.excluding = {}
         end
     )
 
@@ -371,7 +422,7 @@ local function createButtons()
             function()
                 local SuperSecretFolder = Instance.new("Folder")
                 SuperSecretFolder.Parent = SimpleSpy3
-                local random = listfiles("Music") or {}
+                local random = listfiles and listfiles("Music") or {}
                 if #random > 0 then
                     local NotSound = Instance.new("Sound")
                     NotSound.Parent = SuperSecretFolder

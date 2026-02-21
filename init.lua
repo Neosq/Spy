@@ -90,6 +90,7 @@ local UserInputService  = game:GetService("UserInputService")
 local RunService        = game:GetService("RunService")
 
 local codebox = Highlight.new(CodeBox)
+log_manager.codebox = codebox  -- передаём codebox в log_manager
 
 spawn(function()
     local suc, err = pcall(game.HttpGet, game, "https://raw.githubusercontent.com/78n/SimpleSpy/main/UpdateLog.lua")

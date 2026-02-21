@@ -1,4 +1,4 @@
--- CoreLogic - FULL FIXED VERSION (no silent fail, debug everywhere)
+-- CoreLogic - FIXED VERSION (Highlight removed, fallback TextBox, debug prints)
 
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -508,7 +508,7 @@ function genScript(remote, args)
     return gen
 end
 
--- main - debug + safe execution
+-- main - debug + safe execution (no Highlight dependency)
 print("[SimpleSpy] Starting main setup...")
 
 if not _G.SimpleSpyExecuted then
@@ -542,34 +542,26 @@ if not _G.SimpleSpyExecuted then
         RemoteTemplate.Parent = nil
         FunctionTemplate.Parent = nil
 
-        print("[SimpleSpy] 5. Creating codebox...")
-        local codeboxSuccess, codeboxErr = pcall(function()
-            codebox = Highlight.new(CodeBox)
-            codebox:setRaw("")
-        end)
-        if not codeboxSuccess then
-            warn("[SimpleSpy] Codebox failed: " .. tostring(codeboxErr))
-            print("[SimpleSpy] Using fallback TextBox for code display")
-            codebox = {
-                setRaw = function(self, text)
-                    local tb = Instance.new("TextBox")
-                    tb.Size = UDim2.new(1, 0, 1, 0)
-                    tb.BackgroundTransparency = 1
-                    tb.TextColor3 = Color3.new(1, 1, 1)
-                    tb.TextWrapped = true
-                    tb.MultiLine = true
-                    tb.TextXAlignment = Enum.TextXAlignment.Left
-                    tb.TextYAlignment = Enum.TextYAlignment.Top
-                    tb.Font = Enum.Font.Code
-                    tb.TextSize = 14
-                    tb.ClearTextOnFocus = false
-                    tb.Text = text
-                    tb.Parent = CodeBox
-                end
-            }
-        else
-            print("[SimpleSpy] Codebox created")
-        end
+        print("[SimpleSpy] 5. Creating fallback code display (no Highlight)...")
+        codebox = {
+            setRaw = function(self, text)
+                local tb = Instance.new("TextBox")
+                tb.Size = UDim2.new(1, 0, 1, 0)
+                tb.BackgroundTransparency = 1
+                tb.TextColor3 = Color3.new(1, 1, 1)
+                tb.TextWrapped = true
+                tb.MultiLine = true
+                tb.TextXAlignment = Enum.TextXAlignment.Left
+                tb.TextYAlignment = Enum.TextYAlignment.Top
+                tb.Font = Enum.Font.Code
+                tb.TextSize = 14
+                tb.ClearTextOnFocus = false
+                tb.Text = text
+                tb.Parent = CodeBox
+            end
+        }
+        codebox:setRaw("-- Code display ready (Highlight skipped)")
+        print("[SimpleSpy] 5. Fallback codebox ready")
 
         print("[SimpleSpy] 6. Setting global SimpleSpy...")
         getgenv().SimpleSpy = SimpleSpy

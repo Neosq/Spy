@@ -1,3 +1,5 @@
+-- init.lua (Neos edition — без config.lua, встроенные дефолты)
+
 if getgenv().SimpleSpyExecuted then
     if getgenv().SimpleSpyShutdown and type(getgenv().SimpleSpyShutdown) == "function" then
         getgenv().SimpleSpyShutdown()
@@ -18,15 +20,21 @@ end
 
 getgenv().SimpleSpyExecuted = true
 
-local configs          = require(script.Parent.config)
+-- Встроенные настройки (вместо config.lua)
+local configs = {
+    logcheckcaller = false,
+    autoblock = false,
+    funcEnabled = true,
+    advancedinfo = false,
+    supersecretdevtoggle = false
+}
+
 local utils            = require(script.Parent.utils)
 local gui_elements     = require(script.Parent.gui_elements)
 local gui_logic        = require(script.Parent.gui_logic)
 local remote_spy_core  = require(script.Parent.remote_spy_core)
 local serializer       = require(script.Parent.serializer)
 local log_manager      = require(script.Parent.log_manager)
-
--- Кнопки загружаем ПОСЛЕ всех зависимостей
 local buttons_addons   = require(script.Parent.buttons_addons)
 
 local Highlight = loadstring(game:HttpGet("https://raw.githubusercontent.com/78n/SimpleSpy/main/Highlight.lua"))()
@@ -85,9 +93,7 @@ CloseButton.MouseLeave:Connect(function()
 end)
 
 CloseButton.MouseButton1Click:Connect(function()
-    if Icon then
-        Icon:Destroy()
-    end
+    if Icon then Icon:Destroy() end
     getgenv().SimpleSpyShutdown()
 end)
 
@@ -134,11 +140,12 @@ local schedulerconnect = RunService.Heartbeat:Connect(taskscheduler)
 -- Запуск шпиона
 remote_spy_core.toggleSpy()
 
+-- Создание кнопок после полной инициализации
+buttons_addons.create()
+
 -- Функция завершения
 getgenv().SimpleSpyShutdown = function()
-    if schedulerconnect then
-        schedulerconnect:Disconnect()
-    end
+    if schedulerconnect then schedulerconnect:Disconnect() end
     for _, connection in next, gui_logic.connections do
         connection:Disconnect()
     end

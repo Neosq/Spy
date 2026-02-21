@@ -1,41 +1,27 @@
 -- init.lua
 
-if getgenv().SimpleSpyExecuted then
-    if getgenv().SimpleSpyShutdown and type(getgenv().SimpleSpyShutdown) == "function" then
-        getgenv().SimpleSpyShutdown()
-    end
-    for _, obj in ipairs(game:GetService("CoreGui"):GetChildren()) do
-        if obj.Name == "SimpleSpy" or obj.Name == "SimpleSpyIcon" then
-            obj:Destroy()
-        end
-    end
-    if gethui then
-        for _, obj in ipairs(gethui():GetChildren()) do
-            if obj.Name == "SimpleSpy" or obj.Name == "SimpleSpyIcon" then
-                obj:Destroy()
-            end
-        end
-    end
+-- Если уже запущен — выключаем старую версию
+if getgenv().SimpleSpyShutdown and type(getgenv().SimpleSpyShutdown) == "function" then
+    pcall(getgenv().SimpleSpyShutdown)
 end
-
 getgenv().SimpleSpyExecuted = true
 
 -- Получаем модули из getgenv().SS (загружены loader-ом)
-local SS             = getgenv().SS
-local utils          = SS.utils
-local gui_elements   = SS.gui_elements
-local gui_logic      = SS.gui_logic
+local SS              = getgenv().SS
+local utils           = SS.utils
+local gui_elements    = SS.gui_elements
+local gui_logic       = SS.gui_logic
 local remote_spy_core = SS.remote_spy_core
-local serializer     = SS.serializer
-local log_manager    = SS.log_manager
-local buttons_addons = SS.buttons_addons
+local serializer      = SS.serializer
+local log_manager     = SS.log_manager
+local buttons_addons  = SS.buttons_addons
 
 -- Загрузка конфига
 local configs = {
-    logcheckcaller = false,
-    autoblock = false,
-    funcEnabled = true,
-    advancedinfo = false,
+    logcheckcaller       = false,
+    autoblock            = false,
+    funcEnabled          = true,
+    advancedinfo         = false,
     supersecretdevtoggle = false
 }
 
@@ -48,16 +34,16 @@ if isfile and readfile and isfolder and makefolder and writefile then
         if isfile(path) then
             local data = game:GetService("HttpService"):JSONDecode(readfile(path))
             for k, v in pairs(configs) do
-                if data[k] ~= nil then
-                    configs[k] = data[k]
-                end
+                if data[k] ~= nil then configs[k] = data[k] end
             end
         end
 
         setmetatable(configs, {
             __newindex = function(t, k, v)
                 rawset(t, k, v)
-                writefile(path, game:GetService("HttpService"):JSONEncode(t))
+                if writefile then
+                    writefile(path, game:GetService("HttpService"):JSONEncode(t))
+                end
             end
         })
     end, function(err)
@@ -65,7 +51,10 @@ if isfile and readfile and isfolder and makefolder and writefile then
     end)
 end
 
--- Highlight грузим отдельно (внешняя зависимость)
+-- Сохраняем configs в SS чтобы другие модули (remote_spy_core, buttons_addons) могли его получить
+getgenv().SS.configs = configs
+
+-- Highlight
 local Highlight = loadstring(game:HttpGet("https://raw.githubusercontent.com/78n/SimpleSpy/main/Highlight.lua"))()
 
 local SimpleSpy3     = gui_elements.SimpleSpy3
@@ -75,31 +64,29 @@ local Simple         = gui_elements.Simple
 local CloseButton    = gui_elements.CloseButton
 local MaximizeButton = gui_elements.MaximizeButton
 local MinimizeButton = gui_elements.MinimizeButton
-local ToolTip        = gui_elements.ToolTip
-local TextLabel      = gui_elements.TextLabel
 local Icon           = gui_elements.Icon
-
-local LeftPanel      = gui_elements.LeftPanel
-local LogList        = gui_elements.LogList
-local RightPanel     = gui_elements.RightPanel
 local CodeBox        = gui_elements.CodeBox
 local ScrollingFrame = gui_elements.ScrollingFrame
+local LogList        = gui_elements.LogList
+local LeftPanel      = gui_elements.LeftPanel
+local RightPanel     = gui_elements.RightPanel
 
-local TweenService      = game:GetService("TweenService")
-local UserInputService  = game:GetService("UserInputService")
-local RunService        = game:GetService("RunService")
+local TweenService     = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+local RunService       = game:GetService("RunService")
 
 local codebox = Highlight.new(CodeBox)
-log_manager.codebox = codebox  -- передаём codebox в log_manager
+log_manager.codebox = codebox
 
 spawn(function()
-    local suc, err = pcall(game.HttpGet, game, "https://raw.githubusercontent.com/78n/SimpleSpy/main/UpdateLog.lua")
-    codebox:setRaw(suc and err or "")
+    local suc, res = pcall(game.HttpGet, game, "https://raw.githubusercontent.com/78n/SimpleSpy/main/UpdateLog.lua")
+    codebox:setRaw(suc and res or "")
 end)
 
 gui_logic.connectResize()
 gui_logic.bringBackOnResize()
 
+-- SimpleSpy toggle кнопка (вкл/выкл шпион)
 Simple.MouseButton1Click:Connect(remote_spy_core.toggleSpy)
 
 Simple.MouseEnter:Connect(function()
@@ -122,8 +109,8 @@ CloseButton.MouseLeave:Connect(function()
     TweenService:Create(CloseButton, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(37, 36, 38)}):Play()
 end)
 
+-- X кнопка — уничтожает GUI и иконку
 CloseButton.MouseButton1Click:Connect(function()
-    if Icon then Icon:Destroy() end
     getgenv().SimpleSpyShutdown()
 end)
 
@@ -145,36 +132,43 @@ UserInputService.InputChanged:Connect(gui_logic.mouseMoved)
 
 gui_logic.makeToolTip(false)
 
+-- Иконка — скрыть/показать GUI
+local guiVisible = true
+Icon.MouseButton1Click:Connect(function()
+    guiVisible = not guiVisible
+    SimpleSpy3.Enabled = guiVisible
+end)
+
 -- Планировщик задач
-local scheduled = {}
-
-local function taskscheduler()
-    if not remote_spy_core.toggle then
-        scheduled = {}
-        return
-    end
-    if #scheduled > 0 then
-        local task = table.remove(scheduled, 1)
-        if type(task) == "table" and type(task[1]) == "function" then
-            pcall(unpack(task))
-        end
-    end
-end
-
-local schedulerconnect = RunService.Heartbeat:Connect(taskscheduler)
+local schedulerconnect = RunService.Heartbeat:Connect(function()
+    -- пустой планировщик, schedule в remote_spy_core теперь использует task.spawn
+end)
 
 remote_spy_core.toggleSpy()
-buttons_addons.create()
+buttons_addons.create(configs)
 
+-- Функция завершения (должна быть объявлена ДО использования в CloseButton)
 getgenv().SimpleSpyShutdown = function()
-    if schedulerconnect then schedulerconnect:Disconnect() end
-    for _, connection in next, gui_logic.connections do
-        connection:Disconnect()
-    end
-    SimpleSpy3:Destroy()
-    gui_elements.Storage:Destroy()
-    UserInputService.MouseIconEnabled = true
-    getgenv().SimpleSpyExecuted = false
+    pcall(function()
+        if schedulerconnect then schedulerconnect:Disconnect() end
+        -- Отключаем хуки
+        if remote_spy_core.toggle then
+            pcall(remote_spy_core.disablehooks)
+        end
+        -- Отключаем все соединения gui_logic
+        for _, connection in next, gui_logic.connections do
+            pcall(function() connection:Disconnect() end)
+        end
+        -- Уничтожаем GUI и иконку
+        if SimpleSpy3 and SimpleSpy3.Parent then SimpleSpy3:Destroy() end
+        if Icon and Icon.Parent then Icon:Destroy() end
+        if gui_elements.Storage and gui_elements.Storage.Parent then
+            gui_elements.Storage:Destroy()
+        end
+        UserInputService.MouseIconEnabled = true
+        getgenv().SimpleSpyExecuted = false
+        getgenv().SS = nil
+    end)
 end
 
 task.delay(1, function()

@@ -1,4 +1,4 @@
--- init.lua (Neos edition — без config.lua, встроенные дефолты)
+-- init.lua
 
 if getgenv().SimpleSpyExecuted then
     if getgenv().SimpleSpyShutdown and type(getgenv().SimpleSpyShutdown) == "function" then
@@ -20,15 +20,7 @@ end
 
 getgenv().SimpleSpyExecuted = true
 
--- Встроенные настройки (вместо config.lua)
-local configs = {
-    logcheckcaller = false,
-    autoblock = false,
-    funcEnabled = true,
-    advancedinfo = false,
-    supersecretdevtoggle = false
-}
-
+local configs          = require(script.Parent.config)
 local utils            = require(script.Parent.utils)
 local gui_elements     = require(script.Parent.gui_elements)
 local gui_logic        = require(script.Parent.gui_logic)

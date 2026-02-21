@@ -18,14 +18,16 @@ end
 
 getgenv().SimpleSpyExecuted = true
 
-local configs = require(script.Parent.config)
-local utils = require(script.Parent.utils)
-local gui_elements = require(script.Parent.gui_elements)
-local gui_logic = require(script.Parent.gui_logic)
-local remote_spy_core = require(script.Parent.remote_spy_core)
-local serializer = require(script.Parent.serializer)
-local log_manager = require(script.Parent.log_manager)
-local buttons_addons = require(script.Parent.buttons_addons)
+local configs          = require(script.Parent.config)
+local utils            = require(script.Parent.utils)
+local gui_elements     = require(script.Parent.gui_elements)
+local gui_logic        = require(script.Parent.gui_logic)
+local remote_spy_core  = require(script.Parent.remote_spy_core)
+local serializer       = require(script.Parent.serializer)
+local log_manager      = require(script.Parent.log_manager)
+
+-- Кнопки загружаем ПОСЛЕ всех зависимостей
+local buttons_addons   = require(script.Parent.buttons_addons)
 
 local Highlight = loadstring(game:HttpGet("https://raw.githubusercontent.com/78n/SimpleSpy/main/Highlight.lua"))()
 
@@ -107,8 +109,32 @@ UserInputService.InputChanged:Connect(gui_logic.mouseMoved)
 
 gui_logic.makeToolTip(false)
 
+-- Планировщик задач (scheduler)
+local scheduled = {}
+
+local function schedule(f, ...)
+    table.insert(scheduled, {f, ...})
+end
+
+local function taskscheduler()
+    if not remote_spy_core.toggle then
+        scheduled = {}
+        return
+    end
+    if #scheduled > 0 then
+        local task = table.remove(scheduled, 1)
+        if type(task) == "table" and type(task[1]) == "function" then
+            pcall(unpack(task))
+        end
+    end
+end
+
+local schedulerconnect = RunService.Heartbeat:Connect(taskscheduler)
+
+-- Запуск шпиона
 remote_spy_core.toggleSpy()
 
+-- Функция завершения
 getgenv().SimpleSpyShutdown = function()
     if schedulerconnect then
         schedulerconnect:Disconnect()

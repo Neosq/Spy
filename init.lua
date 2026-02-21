@@ -20,7 +20,41 @@ end
 
 getgenv().SimpleSpyExecuted = true
 
-local configs          = require(script.Parent.config)
+-- Загрузка конфига
+local configs = {
+    logcheckcaller = false,
+    autoblock = false,
+    funcEnabled = true,
+    advancedinfo = false,
+    supersecretdevtoggle = false
+}
+
+if isfile and readfile and isfolder and makefolder and writefile then
+    xpcall(function()
+        if not isfolder("SimpleSpy") then makefolder("SimpleSpy") end
+        if not isfolder("SimpleSpy/Assets") then makefolder("SimpleSpy/Assets") end
+
+        local path = "SimpleSpy/Settings.json"
+        if isfile(path) then
+            local data = game:GetService("HttpService"):JSONDecode(readfile(path))
+            for k, v in pairs(configs) do
+                if data[k] ~= nil then
+                    configs[k] = data[k]
+                end
+            end
+        end
+
+        setmetatable(configs, {
+            __newindex = function(t, k, v)
+                rawset(t, k, v)
+                writefile(path, game:GetService("HttpService"):JSONEncode(t))
+            end
+        })
+    end, function(err)
+        warn("Config save/load error: " .. tostring(err))
+    end)
+end
+
 local utils            = require(script.Parent.utils)
 local gui_elements     = require(script.Parent.gui_elements)
 local gui_logic        = require(script.Parent.gui_logic)

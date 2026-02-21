@@ -1,5 +1,19 @@
 local gui_elements = {}
 
+-- Удаляем старые GUI если есть (повторный инжект)
+local function cleanup()
+    local containers = {game:GetService("CoreGui")}
+    if gethui then table.insert(containers, gethui()) end
+    for _, container in ipairs(containers) do
+        for _, obj in ipairs(container:GetChildren()) do
+            if obj.Name == "SimpleSpy" or obj.Name == "SimpleSpyIcon" then
+                pcall(function() obj:Destroy() end)
+            end
+        end
+    end
+end
+cleanup()
+
 local Create = function(class, props, children)
     local obj = Instance.new(class)
     for k, v in pairs(props or {}) do
@@ -199,7 +213,6 @@ gui_elements.TextLabel = Create("TextLabel", {
 
 gui_elements.Icon = Create("ImageButton", {
     Name = "SimpleSpyIcon",
-    Parent = game:GetService("CoreGui"),
     BackgroundTransparency = 0.3,
     Image = "rbxassetid://7072718362",
     Size = UDim2.fromOffset(60, 60),
@@ -208,7 +221,9 @@ gui_elements.Icon = Create("ImageButton", {
     AutoButtonColor = false
 })
 
-gui_elements.SimpleSpy3.Parent = (gethui and gethui()) or game:GetService("CoreGui")
-gui_elements.Icon.Parent = (gethui and gethui()) or game:GetService("CoreGui")
+-- Парентим в конце
+local guiParent = (gethui and gethui()) or game:GetService("CoreGui")
+gui_elements.SimpleSpy3.Parent = guiParent
+gui_elements.Icon.Parent = guiParent
 
 return gui_elements

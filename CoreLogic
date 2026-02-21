@@ -1,4 +1,4 @@
--- CoreLogic - full fixed version with debug
+-- CoreLogic - FULL FIXED VERSION with debug prints
 
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -513,17 +513,17 @@ print("[SimpleSpy] Starting main setup...")
 
 if not _G.SimpleSpyExecuted then
     local success, err = pcall(function()
-        print("[SimpleSpy] Checking client...")
+        print("[SimpleSpy] Step 1: Checking client...")
         if not RunService:IsClient() then error("Not client") end
 
-        print("[SimpleSpy] Checking functions...")
+        print("[SimpleSpy] Step 2: Checking required functions...")
         if not hookfunction or not getrawmetatable or not setreadonly then
             error("Missing required functions")
         end
 
         _G.SimpleSpyShutdown = shutdown
 
-        print("[SimpleSpy] Preloading assets...")
+        print("[SimpleSpy] Step 3: Preloading assets...")
         local preloadSuccess, preloadErr = pcall(ContentProvider.PreloadAsync, ContentProvider, {
             "rbxassetid://6065821980",
             "rbxassetid://6065774948",
@@ -532,32 +532,51 @@ if not _G.SimpleSpyExecuted then
             ImageLabel, ImageLabel_2, ImageLabel_3,
         })
         if not preloadSuccess then
-            warn("[SimpleSpy] Preload failed (non-critical): " .. tostring(preloadErr))
+            warn("[SimpleSpy] Step 3: Preload failed (non-critical): " .. tostring(preloadErr))
         else
-            print("[SimpleSpy] Preload success")
+            print("[SimpleSpy] Step 3: Preload success")
         end
 
-        print("[SimpleSpy] Setup UI elements...")
+        print("[SimpleSpy] Step 4: Setup UI elements...")
         onToggleButtonClick()
         RemoteTemplate.Parent = nil
         FunctionTemplate.Parent = nil
 
-        print("[SimpleSpy] Creating codebox...")
+        print("[SimpleSpy] Step 5: Creating codebox...")
         local codeboxSuccess, codeboxErr = pcall(function()
             codebox = Highlight.new(CodeBox)
             codebox:setRaw("")
         end)
         if not codeboxSuccess then
-            warn("[SimpleSpy] Codebox failed: " .. tostring(codeboxErr))
-            -- Fallback
-            codebox = { setRaw = function(self, text) CodeBox.Text = text end }
+            warn("[SimpleSpy] Step 5: Codebox creation failed: " .. tostring(codeboxErr))
+            -- Fallback: simple TextBox
+            print("[SimpleSpy] Step 5: Using fallback TextBox for code display")
+            codebox = {
+                setRaw = function(self, text)
+                    local tb = Instance.new("TextBox")
+                    tb.Size = UDim2.new(1, 0, 1, 0)
+                    tb.BackgroundTransparency = 1
+                    tb.TextColor3 = Color3.new(1, 1, 1)
+                    tb.TextWrapped = true
+                    tb.MultiLine = true
+                    tb.TextXAlignment = Enum.TextXAlignment.Left
+                    tb.TextYAlignment = Enum.TextYAlignment.Top
+                    tb.Font = Enum.Font.Code
+                    tb.TextSize = 14
+                    tb.ClearTextOnFocus = false
+                    tb.Text = text
+                    tb.Parent = CodeBox
+                end
+            }
         else
-            print("[SimpleSpy] Codebox created")
+            print("[SimpleSpy] Step 5: Codebox created successfully")
         end
 
+        print("[SimpleSpy] Step 6: Setting global SimpleSpy...")
         getgenv().SimpleSpy = SimpleSpy
         TextLabel:GetPropertyChangedSignal("Text"):Connect(scaleToolTip)
 
+        print("[SimpleSpy] Step 7: Connecting buttons...")
         MinimizeButton.MouseButton1Click:Connect(toggleMinimize)
         MaximizeButton.MouseButton1Click:Connect(toggleSideTray)
         Simple.MouseButton1Click:Connect(onToggleButtonClick)
@@ -570,7 +589,7 @@ if not _G.SimpleSpyExecuted then
         table.insert(connections, UserInputService.InputBegan:Connect(backgroundUserInput))
         connectResize()
 
-        print("[SimpleSpy] Enabling GUI...")
+        print("[SimpleSpy] Step 8: Enabling GUI...")
         SimpleSpy2.Enabled = true
         schedulerconnect = RunService.Heartbeat:Connect(taskscheduler)
 
@@ -583,18 +602,22 @@ if not _G.SimpleSpyExecuted then
 
         bringBackOnResize()
 
-        print("[SimpleSpy] Parenting GUI...")
+        print("[SimpleSpy] Step 9: Parenting GUI...")
         local parentSuccess, parentErr = pcall(function()
             SimpleSpy2.Parent = CoreGui
         end)
         if not parentSuccess then
             warn("[SimpleSpy] CoreGui parent failed: " .. tostring(parentErr))
-            pcall(function()
-                SimpleSpy2.Parent = Players.LocalPlayer.PlayerGui
-                print("[SimpleSpy] Fallback: parented to PlayerGui")
+            local fallbackSuccess, fallbackErr = pcall(function()
+                SimpleSpy2.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")
             end)
+            if fallbackSuccess then
+                print("[SimpleSpy] Fallback success: parented to PlayerGui")
+            else
+                warn("[SimpleSpy] PlayerGui fallback failed: " .. tostring(fallbackErr))
+            end
         else
-            print("[SimpleSpy] GUI parented to CoreGui - should be visible!")
+            print("[SimpleSpy] Step 9: GUI parented to CoreGui - GUI should be visible!")
         end
 
         _G.SimpleSpyExecuted = true
@@ -605,7 +628,7 @@ if not _G.SimpleSpyExecuted then
     end)
 
     if not success then
-        warn("[SimpleSpy] CRITICAL ERROR: " .. tostring(err))
+        warn("[SimpleSpy] CRITICAL ERROR in setup: " .. tostring(err))
         if SimpleSpy2 then SimpleSpy2:Destroy() end
         hookfunction(remoteEvent.FireServer, originalEvent)
         hookfunction(remoteFunction.InvokeServer, originalFunction)
@@ -618,12 +641,14 @@ if not _G.SimpleSpyExecuted then
         end
         return
     end
+
+    print("[SimpleSpy] Setup complete!")
 else
     if SimpleSpy2 then SimpleSpy2:Destroy() end
     return
 end
 
--- Add-ons
+-- Add-ons (cleaned)
 newButton("Copy Code", function() setclipboard(codebox:getString()) end)
 
 newButton("Copy Remote", function()
@@ -700,5 +725,3 @@ end)
 newButton("GetReturnValue", function()
     if selected then codebox:setRaw(SimpleSpy:ValueToVar(selected.ReturnValue, "returnValue")) end
 end)
-
-print("[SimpleSpy] Setup complete!")

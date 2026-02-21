@@ -1,5 +1,3 @@
--- CoreLogic - FINAL FIXED VERSION (Highlight removed, fallback TextBox, full debug)
-
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
@@ -508,119 +506,47 @@ function genScript(remote, args)
     return gen
 end
 
--- main - debug + safe execution (no Highlight)
-print("[SimpleSpy] Starting main setup...")
+-- (the rest of the functions like v2s, t2s, k2s, f2s, i2p, u2s, v2p, formatstr, handlespecials, safetostring, getScriptFromSrc, schedule, scheduleWait, taskscheduler, remoteHandler, hookRemote, newnamecall, newFireServer, newInvokeServer, toggleSpy, toggleSpyMethod, shutdown remain unchanged — they are already clean)
 
+-- main
 if not _G.SimpleSpyExecuted then
-    local success, err = pcall(function()
-        print("[SimpleSpy] 1. Checking client...")
-        if not RunService:IsClient() then error("Not client") end
-
-        print("[SimpleSpy] 2. Checking required functions...")
-        if not hookfunction or not getrawmetatable or not setreadonly then
-            error("Missing required functions")
-        end
-
+    local succeeded = pcall(function()
+        if not RunService:IsClient() then return end
+        if not hookfunction or not getrawmetatable or not setreadonly then return end
         _G.SimpleSpyShutdown = shutdown
-
-        print("[SimpleSpy] 3. Preloading assets (non-critical)...")
-        local preloadSuccess, preloadErr = pcall(ContentProvider.PreloadAsync, ContentProvider, {
+        ContentProvider:PreloadAsync({
             "rbxassetid://6065821980",
             "rbxassetid://6065774948",
             "rbxassetid://6065821086",
             "rbxassetid://6065821596",
             ImageLabel, ImageLabel_2, ImageLabel_3,
         })
-        if not preloadSuccess then
-            warn("[SimpleSpy] Preload failed (non-critical): " .. tostring(preloadErr))
-        else
-            print("[SimpleSpy] Preload success")
-        end
-
-        print("[SimpleSpy] 4. Setup UI elements...")
         onToggleButtonClick()
         RemoteTemplate.Parent = nil
         FunctionTemplate.Parent = nil
-
-        print("[SimpleSpy] 5. Creating fallback code display...")
-        codebox = {
-            setRaw = function(self, text)
-                local tb = Instance.new("TextBox")
-                tb.Size = UDim2.new(1, 0, 1, 0)
-                tb.BackgroundTransparency = 1
-                tb.TextColor3 = Color3.new(1, 1, 1)
-                tb.TextWrapped = true
-                tb.MultiLine = true
-                tb.TextXAlignment = Enum.TextXAlignment.Left
-                tb.TextYAlignment = Enum.TextYAlignment.Top
-                tb.Font = Enum.Font.Code
-                tb.TextSize = 14
-                tb.ClearTextOnFocus = false
-                tb.Text = text
-                tb.Parent = CodeBox
-            end
-        }
-        codebox:setRaw("-- SimpleSpy ready (fallback code display active)")
-        print("[SimpleSpy] 5. Fallback code display ready")
-
-        print("[SimpleSpy] 6. Setting global SimpleSpy...")
+        codebox = Highlight.new(CodeBox)
+        codebox:setRaw("")
         getgenv().SimpleSpy = SimpleSpy
         TextLabel:GetPropertyChangedSignal("Text"):Connect(scaleToolTip)
-
-        print("[SimpleSpy] 7. Connecting buttons...")
         MinimizeButton.MouseButton1Click:Connect(toggleMinimize)
         MaximizeButton.MouseButton1Click:Connect(toggleSideTray)
         Simple.MouseButton1Click:Connect(onToggleButtonClick)
-
         CloseButton.MouseButton1Click:Connect(function()
             if Background then Background.Visible = false end
             if mobileToggle then mobileToggle:Destroy() end
         end)
-
         table.insert(connections, UserInputService.InputBegan:Connect(backgroundUserInput))
         connectResize()
-
-        print("[SimpleSpy] 8. Enabling GUI...")
         SimpleSpy2.Enabled = true
         schedulerconnect = RunService.Heartbeat:Connect(taskscheduler)
-
-        if syn and syn.protect_gui then
-            local protectSuccess, protectErr = pcall(syn.protect_gui, SimpleSpy2)
-            if not protectSuccess then
-                warn("[SimpleSpy] protect_gui failed: " .. tostring(protectErr))
-            end
-        end
-
+        if syn and syn.protect_gui then pcall(syn.protect_gui, SimpleSpy2) end
         bringBackOnResize()
-
-        print("[SimpleSpy] 9. Parenting GUI...")
-        local parentSuccess, parentErr = pcall(function()
-            SimpleSpy2.Parent = CoreGui
-        end)
-        if not parentSuccess then
-            warn("[SimpleSpy] CoreGui parent failed: " .. tostring(parentErr))
-            local fallbackSuccess, fallbackErr = pcall(function()
-                SimpleSpy2.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")
-            end)
-            if fallbackSuccess then
-                print("[SimpleSpy] Fallback success: parented to PlayerGui")
-            else
-                warn("[SimpleSpy] PlayerGui fallback failed: " .. tostring(fallbackErr))
-            end
-        else
-            print("[SimpleSpy] GUI parented to CoreGui - GUI should be visible!")
-        end
-
+        SimpleSpy2.Parent = CoreGui
         _G.SimpleSpyExecuted = true
-
-        if not Players.LocalPlayer then
-            Players:GetPropertyChangedSignal("LocalPlayer"):Wait()
-        end
+        if not Players.LocalPlayer then Players:GetPropertyChangedSignal("LocalPlayer"):Wait() end
     end)
-
-    if not success then
-        warn("[SimpleSpy] CRITICAL SETUP ERROR: " .. tostring(err))
-        if SimpleSpy2 then SimpleSpy2:Destroy() end
+    if not succeeded then
+        SimpleSpy2:Destroy()
         hookfunction(remoteEvent.FireServer, originalEvent)
         hookfunction(remoteFunction.InvokeServer, originalFunction)
         if hookmetamethod then
@@ -632,10 +558,8 @@ if not _G.SimpleSpyExecuted then
         end
         return
     end
-
-    print("[SimpleSpy] Setup complete - GUI should appear!")
 else
-    if SimpleSpy2 then SimpleSpy2:Destroy() end
+    SimpleSpy2:Destroy()
     return
 end
 

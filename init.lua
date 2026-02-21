@@ -20,6 +20,16 @@ end
 
 getgenv().SimpleSpyExecuted = true
 
+-- Получаем модули из getgenv().SS (загружены loader-ом)
+local SS             = getgenv().SS
+local utils          = SS.utils
+local gui_elements   = SS.gui_elements
+local gui_logic      = SS.gui_logic
+local remote_spy_core = SS.remote_spy_core
+local serializer     = SS.serializer
+local log_manager    = SS.log_manager
+local buttons_addons = SS.buttons_addons
+
 -- Загрузка конфига
 local configs = {
     logcheckcaller = false,
@@ -55,36 +65,29 @@ if isfile and readfile and isfolder and makefolder and writefile then
     end)
 end
 
-local utils            = require(script.Parent.utils)
-local gui_elements     = require(script.Parent.gui_elements)
-local gui_logic        = require(script.Parent.gui_logic)
-local remote_spy_core  = require(script.Parent.remote_spy_core)
-local serializer       = require(script.Parent.serializer)
-local log_manager      = require(script.Parent.log_manager)
-local buttons_addons   = require(script.Parent.buttons_addons)
-
+-- Highlight грузим отдельно (внешняя зависимость)
 local Highlight = loadstring(game:HttpGet("https://raw.githubusercontent.com/78n/SimpleSpy/main/Highlight.lua"))()
 
-local SimpleSpy3 = gui_elements.SimpleSpy3
-local Background = gui_elements.Background
-local TopBar = gui_elements.TopBar
-local Simple = gui_elements.Simple
-local CloseButton = gui_elements.CloseButton
+local SimpleSpy3     = gui_elements.SimpleSpy3
+local Background     = gui_elements.Background
+local TopBar         = gui_elements.TopBar
+local Simple         = gui_elements.Simple
+local CloseButton    = gui_elements.CloseButton
 local MaximizeButton = gui_elements.MaximizeButton
 local MinimizeButton = gui_elements.MinimizeButton
-local ToolTip = gui_elements.ToolTip
-local TextLabel = gui_elements.TextLabel
-local Icon = gui_elements.Icon
+local ToolTip        = gui_elements.ToolTip
+local TextLabel      = gui_elements.TextLabel
+local Icon           = gui_elements.Icon
 
-local LeftPanel = gui_elements.LeftPanel
-local LogList = gui_elements.LogList
-local RightPanel = gui_elements.RightPanel
-local CodeBox = gui_elements.CodeBox
+local LeftPanel      = gui_elements.LeftPanel
+local LogList        = gui_elements.LogList
+local RightPanel     = gui_elements.RightPanel
+local CodeBox        = gui_elements.CodeBox
 local ScrollingFrame = gui_elements.ScrollingFrame
 
-local TweenService = game:GetService("TweenService")
-local UserInputService = game:GetService("UserInputService")
-local RunService = game:GetService("RunService")
+local TweenService      = game:GetService("TweenService")
+local UserInputService  = game:GetService("UserInputService")
+local RunService        = game:GetService("RunService")
 
 local codebox = Highlight.new(CodeBox)
 
@@ -141,12 +144,8 @@ UserInputService.InputChanged:Connect(gui_logic.mouseMoved)
 
 gui_logic.makeToolTip(false)
 
--- Планировщик задач (scheduler)
+-- Планировщик задач
 local scheduled = {}
-
-local function schedule(f, ...)
-    table.insert(scheduled, {f, ...})
-end
 
 local function taskscheduler()
     if not remote_spy_core.toggle then
@@ -163,13 +162,9 @@ end
 
 local schedulerconnect = RunService.Heartbeat:Connect(taskscheduler)
 
--- Запуск шпиона
 remote_spy_core.toggleSpy()
-
--- Создание кнопок после полной инициализации
 buttons_addons.create()
 
--- Функция завершения
 getgenv().SimpleSpyShutdown = function()
     if schedulerconnect then schedulerconnect:Disconnect() end
     for _, connection in next, gui_logic.connections do

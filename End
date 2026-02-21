@@ -1,98 +1,65 @@
--- Mobile Toggle - полный и надёжный блок (вставь вместо старого в End)
-
-print("[Mobile Toggle] Starting creation...")
-
-local CoreGui = game:GetService("CoreGui")
-local UserInputService = game:GetService("UserInputService")
-
--- Создаём ScreenGui
 local mobileToggle = Instance.new("ScreenGui")
 mobileToggle.Name = "MobileToggle"
 mobileToggle.ResetOnSpawn = false
-mobileToggle.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 mobileToggle.Parent = CoreGui
-print("[Mobile Toggle] ScreenGui created and parented to CoreGui")
 
--- Создаём кнопку
 local circleBtn = Instance.new("ImageButton")
-circleBtn.Name = "ToggleBtn"
-circleBtn.Size = UDim2.new(0, 60, 0, 60)                     -- размер
-circleBtn.Position = UDim2.new(0.5, -30, 0.35, -30)          -- центр + чуть выше
-circleBtn.AnchorPoint = Vector2.new(0.5, 0.5)                -- якорь по центру
-circleBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 47)      -- тёмный фон
-circleBtn.BackgroundTransparency = 0.3                       -- полупрозрачный
-circleBtn.ImageTransparency = 0                              -- иконка полностью видимая
-circleBtn.ImageColor3 = Color3.new(1, 1, 1)                  -- без тона
-circleBtn.ZIndex = 10000                                     -- сверху всего
-circleBtn.Visible = true
+circleBtn.Size = UDim2.new(0, 45, 0, 45)
+circleBtn.Position = UDim2.new(0.92, -22, 0.88, -22)
+circleBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 47)
+circleBtn.BackgroundTransparency = 0.4
+circleBtn.Image = "rbxassetid://101568740588701"
+circleBtn.ZIndex = 10000
+circleBtn.Parent = mobileToggle
 
--- Надёжный публичный ID (глаз)
-circleBtn.Image = "rbxassetid://7072718362"
-print("[Mobile Toggle] Image set to: rbxassetid://7072718362 (eye icon)")
-
--- Круглый угол
 local corner = Instance.new("UICorner")
 corner.CornerRadius = UDim.new(1)
 corner.Parent = circleBtn
 
-circleBtn.Parent = mobileToggle
-print("[Mobile Toggle] Button added to ScreenGui")
-
--- Отладка после 1 секунды
-task.spawn(function()
-    task.wait(1)
-    print("[Debug] Button Position (UDim2): " .. tostring(circleBtn.Position))
-    print("[Debug] Absolute Position: " .. tostring(circleBtn.AbsolutePosition))
-    print("[Debug] Absolute Size: " .. tostring(circleBtn.AbsoluteSize))
-    print("[Debug] Visible: " .. tostring(circleBtn.Visible))
-    print("[Debug] ImageTransparency: " .. tostring(circleBtn.ImageTransparency))
-    print("[Debug] ImageColor3: " .. tostring(circleBtn.ImageColor3))
-end)
-
--- Клик по кнопке (самое надёжное переключение)
-circleBtn.Activated:Connect(function()
-    print("[Mobile Toggle] Button clicked!")
-    
-    local spyGui = CoreGui:FindFirstChild("SimpleSpy2")
-    if spyGui then
-        spyGui.Enabled = not spyGui.Enabled
-        print("[Mobile Toggle] SimpleSpy2 Enabled changed to: " .. tostring(spyGui.Enabled))
-    else
-        print("[Mobile Toggle] WARNING: SimpleSpy2 not found in CoreGui!")
-    end
-end)
-
--- Перетаскивание кнопки
-local dragging = false
-local dragStart = nil
-local startPos = nil
-
+local dragging, dragStart, startPos
 circleBtn.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
         dragging = true
         dragStart = input.Position
         startPos = circleBtn.Position
-        print("[Debug] Drag started")
+
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then dragging = false end
+        end)
     end
 end)
 
 UserInputService.InputChanged:Connect(function(input)
     if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
         local delta = input.Position - dragStart
-        circleBtn.Position = UDim2.new(
-            startPos.X.Scale,
-            startPos.X.Offset + delta.X,
-            startPos.Y.Scale,
-            startPos.Y.Offset + delta.Y
-        )
+        circleBtn.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
     end
 end)
 
-circleBtn.InputEnded:Connect(function(input)
+circleBtn.Activated:Connect(function()
+    if Background then Background.Visible = not Background.Visible end
+end)
+
+local winDragging, winStart, winPos
+TopBar.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        dragging = false
-        print("[Debug] Drag ended")
+        winDragging = true
+        winStart = input.Position
+        winPos = Background.Position
+
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then winDragging = false end
+        end)
     end
 end)
 
-print("[Mobile Toggle] Setup complete! Button should be visible in center-upper screen.")
+UserInputService.InputChanged:Connect(function(input)
+    if winDragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+        local delta = input.Position - winStart
+        if Background then
+            Background.Position = UDim2.new(winPos.X.Scale, winPos.X.Offset + delta.X, winPos.Y.Scale, winPos.Y.Offset + delta.Y)
+        end
+    end
+end)
+
+if Background then Background.Visible = false end
